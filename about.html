@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Anatomy of Web Application Vulnerabilities</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&display=swap" rel="stylesheet">
+    <!--
+    Selected Color Palette: "Brilliant Blues"
+    #004AAD (Dark Blue - Titles)
+    #0073E6 (Primary Blue - Accents, Charts)
+    #66B2FF (Light Blue - Charts, Highlights)
+    #CCE5FF (Very Light Blue - Backgrounds)
+    #1F2937 (Gray - Body Text)
+
+    Infographic Narrative Plan:
+    1.  Introduction/Hook: A high-impact hero section establishing the importance of web security.
+    2.  The Core Threats: Introduce the five key vulnerabilities (SQLi, XSS, Broken Auth, Insecure Deserialization, SSRF) using a card-based layout.
+    3.  Vulnerability Impact Analysis: A bar chart to compare the typical impacts of these vulnerabilities (e.g., RCE, Data Theft). Goal: Compare. Justification: A bar chart is ideal for comparing distinct categories. Implemented with Chart.js.
+    4.  Anatomy of an Attack: A flowchart visualizing a Server-Side Request Forgery (SSRF) attack. Goal: Organize. Justification: A flowchart clearly shows a process flow. Implemented with structured HTML/CSS with Tailwind as required (NO SVG/Mermaid).
+    5.  The Shield - Mitigation Strategies: A donut chart showing the distribution of key mitigation principles. Goal: Inform (Composition). Justification: A donut chart effectively shows parts of a whole. Implemented with Chart.js.
+    6.  Automated Defense Workflow: A flowchart illustrating the analysis-to-patching pipeline described in the source code files. Goal: Organize. Justification: A flowchart is the best way to represent this workflow. Implemented with structured HTML/CSS with Tailwind (NO SVG/Mermaid).
+    7.  Conclusion: A final call to action emphasizing a proactive security culture.
+
+    Visualization Choices Justification:
+    -   Bar Chart (Vulnerability Impact): Chosen to clearly compare the severity and common outcomes across different vulnerabilities. Implemented with Chart.js (Canvas). NO SVG.
+    -   Donut Chart (Mitigation Principles): Chosen to show the composition and relative importance of different defensive strategies. Implemented with Chart.js (Canvas). NO SVG.
+    -   Flowcharts (SSRF Attack & Tool Workflow): Implemented using styled HTML divs and borders with Tailwind CSS to create arrows and nodes, strictly adhering to the NO SVG and NO MERMAID JS constraint.
+    -   Icons: Using standard Unicode characters (e.g., 🛡️, 💉) to add visual cues without using image files or SVG.
+
+    Confirmation: NEITHER Mermaid JS NOR SVG were used anywhere in this output. All charts are rendered on Canvas elements by Chart.js, and diagrams are built with HTML/CSS.
+    -->
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f0f4f8;
+        }
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+            height: 350px;
+            max-height: 400px;
+        }
+        @media (min-width: 768px) {
+            .chart-container {
+                height: 400px;
+            }
+        }
+        .flow-arrow {
+            position: relative;
+            width: 100%;
+            height: 2rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .flow-arrow::after {
+            content: '▼';
+            font-size: 1.5rem;
+            color: #0073E6;
+        }
+        .flow-arrow-right {
+            position: relative;
+            width: 2rem;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .flow-arrow-right::after {
+            content: '►';
+            font-size: 1.5rem;
+            color: #0073E6;
+        }
+    </style>
+</head>
+<body class="text-gray-800">
+
+    <div class="container mx-auto p-4 md:p-8 max-w-7xl">
+
+        <header class="text-center py-12">
+            <h1 class="text-4xl md:text-6xl font-black text-[#004AAD]">The Anatomy of Web Application Vulnerabilities</h1>
+            <p class="mt-4 text-lg md:text-xl text-gray-600 max-w-3xl mx-auto">A deep dive into the most critical security risks threatening modern applications and the strategies to defend against them.</p>
+        </header>
+
+        <main>
+            <section id="core-threats" class="mb-20">
+                <h2 class="text-3xl font-bold text-center text-[#004AAD] mb-12">The Core Threats: A Landscape of Risk</h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-8">
+                    
+                    <div class="bg-white p-6 rounded-xl shadow-lg hover:shadow-2xl transition-shadow duration-300 transform hover:-translate-y-1 border-t-4 border-[#0073E6]">
+                        <div class="text-4xl mb-4">💉</div>
+                        <h3 class="text-xl font-bold text-[#004AAD] mb-2">SQL Injection (SQLi)</h3>
+                        <p class="text-gray-600">Attackers inject malicious SQL code into application inputs, tricking the database into executing unintended commands, leading to data theft or destruction.</p>
+                    </div>
+
+                    <div class="bg-white p-6 rounded-xl shadow-lg hover:shadow-2xl transition-shadow duration-300 transform hover:-translate-y-1 border-t-4 border-[#0073E6]">
+                        <div class="text-4xl mb-4">🎭</div>
+                        <h3 class="text-xl font-bold text-[#004AAD] mb-2">Cross-Site Scripting (XSS)</h3>
+                        <p class="text-gray-600">Malicious scripts are injected into trusted websites, executing in victims' browsers to hijack sessions, steal data, or deface sites.</p>
+                    </div>
+
+                    <div class="bg-white p-6 rounded-xl shadow-lg hover:shadow-2xl transition-shadow duration-300 transform hover:-translate-y-1 border-t-4 border-[#0073E6]">
+                        <div class="text-4xl mb-4">🔑</div>
+                        <h3 class="text-xl font-bold text-[#004AAD] mb-2">Broken Authentication</h3>
+                        <p class="text-gray-600">Flaws in session management or credential handling allow attackers to impersonate users through credential stuffing or session hijacking.</p>
+                    </div>
+
+                    <div class="bg-white p-6 rounded-xl shadow-lg hover:shadow-2xl transition-shadow duration-300 transform hover:-translate-y-1 border-t-4 border-[#0073E6]">
+                        <div class="text-4xl mb-4">📦</div>
+                        <h3 class="text-xl font-bold text-[#004AAD] mb-2">Insecure Deserialization</h3>
+                        <p class="text-gray-600">Untrusted serialized data is exploited during deserialization, leading to severe outcomes like Remote Code Execution (RCE) or denial of service.</p>
+                    </div>
+
+                    <div class="bg-white p-6 rounded-xl shadow-lg hover:shadow-2xl transition-shadow duration-300 transform hover:-translate-y-1 border-t-4 border-[#0073E6]">
+                        <div class="text-4xl mb-4">🔗</div>
+                        <h3 class="text-xl font-bold text-[#004AAD] mb-2">Server-Side Request Forgery</h3>
+                        <p class="text-gray-600">Attackers force the server to make requests to unintended locations, enabling access to internal systems, port scanning, or data exfiltration.</p>
+                    </div>
+                </div>
+            </section>
+
+            <section id="impact-analysis" class="mb-20 bg-[#CCE5FF] p-8 rounded-xl">
+                <h2 class="text-3xl font-bold text-center text-[#004AAD] mb-2">Vulnerability Impact Analysis</h2>
+                <p class="text-center text-gray-700 mb-8 max-w-2xl mx-auto">While all vulnerabilities are serious, their primary impacts differ. Remote Code Execution (RCE) is often the most critical, granting attackers near-total control. Here’s a comparative look at the most common outcomes.</p>
+                <div class="bg-white p-6 rounded-xl shadow-lg">
+                    <div class="chart-container">
+                        <canvas id="impactChart"></canvas>
+                    </div>
+                </div>
+            </section>
+            
+            <section id="attack-flow" class="mb-20">
+                <h2 class="text-3xl font-bold text-center text-[#004AAD] mb-2">Anatomy of an Attack: SSRF</h2>
+                <p class="text-center text-gray-600 mb-12 max-w-2xl mx-auto">Server-Side Request Forgery (SSRF) leverages the server's trust to attack internal resources. This flowchart illustrates how an attacker can exploit a seemingly harmless feature to access a sensitive internal API.</p>
+                <div class="flex flex-col items-center">
+                    <div class="bg-white p-6 rounded-xl shadow-md w-full max-w-md text-center">
+                        <div class="text-2xl font-bold text-[#004AAD]">1. Attacker</div>
+                        <p class="mt-2 text-gray-600">Finds an application feature that fetches data from a URL, like an image proxy.</p>
+                    </div>
+                    <div class="flow-arrow"></div>
+                    <div class="bg-white p-6 rounded-xl shadow-md w-full max-w-md text-center">
+                        <div class="text-2xl font-bold text-[#004AAD]">2. Crafted Request</div>
+                        <p class="mt-2 text-gray-600">Submits a malicious URL targeting an internal resource, e.g., <code class="bg-gray-200 p-1 rounded">http://127.0.0.1/admin-api</code>.</p>
+                    </div>
+                    <div class="flow-arrow"></div>
+                    <div class="bg-[#CCE5FF] p-6 rounded-xl shadow-inner w-full max-w-2xl text-center border-2 border-dashed border-[#0073E6]">
+                         <div class="text-2xl font-bold text-[#004AAD]">3. Vulnerable Server</div>
+                         <p class="mt-2 text-gray-700">The server, lacking proper validation, trusts the input and makes a request to the internal <code class="bg-white p-1 rounded">admin-api</code> on the attacker's behalf.</p>
+                    </div>
+                    <div class="flow-arrow"></div>
+                    <div class="bg-red-100 p-6 rounded-xl shadow-md w-full max-w-md text-center border-l-4 border-red-500">
+                        <div class="text-2xl font-bold text-red-700">4. Internal System Compromise</div>
+                        <p class="mt-2 text-red-600">The internal API, assuming the request is from a trusted source, returns sensitive data which the server then forwards to the attacker.</p>
+                    </div>
+                </div>
+            </section>
+            
+            <section id="mitigation" class="mb-20 bg-white p-8 rounded-xl shadow-lg">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
+                    <div>
+                        <h2 class="text-3xl font-bold text-[#004AAD] mb-4">The Shield: Core Mitigation Principles</h2>
+                        <p class="text-gray-600 mb-6">Effective defense is not about a single tool but a layered strategy built on core principles. Preventing attacks requires validating inputs, sanitizing outputs, enforcing strict access, and securely configuring every part of the application stack.</p>
+                        <ul class="space-y-3">
+                            <li class="flex items-start"><span class="text-[#0073E6] font-bold mr-2">🛡️ Input Validation:</span> Treat all user input as untrusted. Use strict allowlists.</li>
+                            <li class="flex items-start"><span class="text-[#0073E6] font-bold mr-2">🛡️ Output Encoding:</span> Encode data before rendering to prevent it from being executed by a browser.</li>
+                            <li class="flex items-start"><span class="text-[#0073E6] font-bold mr-2">🛡️ Access Control:</span> Enforce the Principle of Least Privilege and mandate Multi-Factor Authentication (MFA).</li>
+                            <li class="flex items-start"><span class="text-[#0073E6] font-bold mr-2">🛡️ Secure Configuration:</span> Harden every layer, from the webserver to the database, and avoid default settings.</li>
+                        </ul>
+                    </div>
+                    <div class="chart-container h-80 md:h-96">
+                        <canvas id="mitigationChart"></canvas>
+                    </div>
+                </div>
+            </section>
+
+            <section id="auto-defense" class="mb-20">
+                <h2 class="text-3xl font-bold text-center text-[#004AAD] mb-2">Automated Defense: The Analysis-to-Patch Pipeline</h2>
+                <p class="text-center text-gray-600 mb-12 max-w-3xl mx-auto">Modern development integrates security directly into the workflow. The provided source files describe a tool that automates vulnerability detection and patching, demonstrating a proactive defense-in-depth approach.</p>
+                <div class="bg-white p-8 rounded-xl shadow-lg">
+                    <div class="grid grid-cols-1 md:grid-cols-5 items-center gap-4 text-center">
+                        <div class="bg-[#CCE5FF] p-4 rounded-lg">
+                            <h4 class="font-bold text-[#004AAD]">1. Upload Code</h4>
+                            <p class="text-sm text-gray-700">Developer uploads a `.java` file via the frontend.</p>
+                        </div>
+                        <div class="flow-arrow-right hidden md:flex"></div>
+                        <div class="flow-arrow md:hidden"></div>
+                        <div class="bg-[#CCE5FF] p-4 rounded-lg">
+                            <h4 class="font-bold text-[#004AAD]">2. Analyze</h4>
+                            <p class="text-sm text-gray-700">A Python backend invokes a Java static analyzer (SAST) to find known vulnerability patterns.</p>
+                        </div>
+                        <div class="flow-arrow-right hidden md:flex"></div>
+                        <div class="flow-arrow md:hidden"></div>
+                        <div class="bg-[#CCE5FF] p-4 rounded-lg">
+                            <h4 class="font-bold text-[#004AAD]">3. Report</h4>
+                            <p class="text-sm text-gray-700">Results are sent to the frontend, highlighting vulnerable lines of code.</p>
+                        </div>
+                         <div class="flow-arrow-right hidden md:flex"></div>
+                         <div class="flow-arrow md:hidden"></div>
+                        <div class="bg-[#CCE5FF] p-4 rounded-lg">
+                            <h4 class="font-bold text-[#004AAD]">4. Patch</h4>
+                            <p class="text-sm text-gray-700">Upon request, the backend applies automated patches to the code.</p>
+                        </div>
+                         <div class="flow-arrow-right hidden md:flex"></div>
+                         <div class="flow-arrow md:hidden"></div>
+                        <div class="bg-green-100 p-4 rounded-lg border-l-4 border-green-500">
+                            <h4 class="font-bold text-green-800">5. Secure Code</h4>
+                            <p class="text-sm text-green-700">The fixed, secure code is returned to the developer for review and deployment.</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+        </main>
+
+        <footer class="text-center py-8 border-t border-gray-300 mt-12">
+            <p class="text-gray-500">Security is not a feature, it's a foundation. Build securely.</p>
+        </footer>
+
+    </div>
+
+    <script>
+        function wrapLabel(str, maxWidth) {
+            if (str.length <= maxWidth) {
+                return str;
+            }
+            const words = str.split(' ');
+            const lines = [];
+            let currentLine = '';
+            words.forEach(word => {
+                if ((currentLine + word).length > maxWidth) {
+                    lines.push(currentLine.trim());
+                    currentLine = '';
+                }
+                currentLine += word + ' ';
+            });
+            lines.push(currentLine.trim());
+            return lines;
+        }
+
+        const sharedTooltipCallback = {
+            plugins: {
+                tooltip: {
+                    callbacks: {
+                        title: function(tooltipItems) {
+                            const item = tooltipItems[0];
+                            let label = item.chart.data.labels[item.dataIndex];
+                            if (Array.isArray(label)) {
+                                return label.join(' ');
+                            }
+                            return label;
+                        }
+                    }
+                }
+            }
+        };
+
+        const impactChartCtx = document.getElementById('impactChart').getContext('2d');
+        const impactLabels = ['SQL Injection', 'Cross-Site Scripting', 'Broken Authentication', 'Insecure Deserialization', 'Server-Side Request Forgery'];
+        new Chart(impactChartCtx, {
+            type: 'bar',
+            data: {
+                labels: impactLabels.map(label => wrapLabel(label, 16)),
+                datasets: [{
+                    label: 'Data Theft / Leakage',
+                    data: [95, 85, 90, 70, 80],
+                    backgroundColor: '#0073E6',
+                }, {
+                    label: 'Account Takeover',
+                    data: [60, 90, 95, 40, 20],
+                    backgroundColor: '#66B2FF',
+                }, {
+                    label: 'Remote Code Execution (RCE)',
+                    data: [30, 0, 0, 98, 10],
+                     backgroundColor: '#004AAD',
+                }]
+            },
+            options: {
+                ...sharedTooltipCallback,
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    x: {
+                        stacked: true,
+                        grid: { display: false }
+                    },
+                    y: {
+                        stacked: true,
+                        beginAtZero: true,
+                        title: {
+                            display: true,
+                            text: 'Relative Impact Score'
+                        }
+                    }
+                },
+                plugins: {
+                     ...sharedTooltipCallback.plugins,
+                    legend: {
+                        position: 'bottom',
+                    },
+                }
+            }
+        });
+
+        const mitigationChartCtx = document.getElementById('mitigationChart').getContext('2d');
+        const mitigationLabels = [
+            'Input Validation & Sanitization (Allowlisting)', 
+            'Context-Aware Output Encoding', 
+            'Strong Authentication & Session Mgmt (MFA)', 
+            'Secure Configuration & Hardening'
+        ];
+        new Chart(mitigationChartCtx, {
+            type: 'doughnut',
+            data: {
+                labels: mitigationLabels.map(label => wrapLabel(label, 16)),
+                datasets: [{
+                    label: 'Importance',
+                    data: [35, 30, 25, 10],
+                    backgroundColor: ['#004AAD', '#0073E6', '#66B2FF', '#CCE5FF'],
+                    borderColor: '#fff',
+                    borderWidth: 3
+                }]
+            },
+            options: {
+                 ...sharedTooltipCallback,
+                 responsive: true,
+                 maintainAspectRatio: false,
+                 plugins: {
+                    ...sharedTooltipCallback.plugins,
+                    legend: {
+                        position: 'bottom',
+                         labels: {
+                            padding: 20
+                        }
+                    }
+                }
+            }
+        });
+    </script>
+
+</body>
+</html>

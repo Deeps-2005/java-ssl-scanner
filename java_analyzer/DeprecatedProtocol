@@ -1,0 +1,7 @@
+import javax.net.ssl.SSLContext;
+
+public class DeprecatedProtocol {
+    public static void main(String[] args) throws Exception {
+        SSLContext ctx = SSLContext.getInstance("SSL");
+    }
+}

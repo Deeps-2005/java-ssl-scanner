@@ -1,0 +1,1350 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Java Vulnerability Scanner</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Font: Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        /* Custom CSS for a modern, animated, and clean UI */
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f8fafc; /* A lighter, cleaner gray (slate-50) */
+            color: #334155; /* slate-700 */
+        }
+
+        .container {
+            max-width: 90%; /* Utilize more screen width for better code viewing */
+            margin: 3rem auto;
+            padding: 3rem;
+            background-color: #ffffff;
+            border-radius: 1.5rem; /* Softer, larger radius */
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1); /* Softer, more diffuse shadow */
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        h1 {
+            color: #1e293b; /* slate-900 */
+        }
+        
+        h2 {
+           color: #334155; /* slate-700 */
+        }
+
+        h3 {
+           color: #475569; /* slate-600 */
+        }
+
+        /* Enhanced File Upload Box */
+        .file-upload-container {
+            border: 2px dashed #cbd5e1; /* slate-300 */
+            background-color: #f8fafc; /* slate-50 */
+            border-radius: 1.25rem;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            cursor: pointer;
+        }
+
+        .file-upload-container:hover {
+            background-color: #f0f9ff; /* sky-50 on hover */
+            border-color: #7dd3fc; /* sky-300 on hover */
+            transform: translateY(-4px);
+            box-shadow: 0 10px 15px -3px rgba(56, 189, 248, 0.1), 0 4px 6px -2px rgba(56, 189, 248, 0.07);
+        }
+        
+        /* Base button styles for consistency and modern feel */
+        .button {
+             padding: 0.875rem 2.5rem; /* 14px 40px */
+             border-radius: 9999px; /* pill shape */
+             font-weight: 600;
+             letter-spacing: 0.025em;
+             outline: none;
+             transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+             transform-origin: center;
+        }
+        
+        .button:hover {
+             transform: scale(1.03);
+             box-shadow: 0 10px 20px -5px rgba(0,0,0,0.1);
+        }
+
+        .button:active {
+            transform: scale(0.98);
+        }
+
+        .button:focus-visible {
+            box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.4);
+        }
+
+        .button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: scale(1);
+            box-shadow: none;
+        }
+
+        /* Table styles for a cleaner, more modern look */
+        .table-container {
+            border-radius: 1rem;
+            overflow: hidden;
+            border: 1px solid #e2e8f0; /* slate-200 */
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+        }
+
+        th {
+            background-color: #f8fafc; /* slate-50 */
+            text-transform: uppercase;
+            font-size: 0.75rem; /* 12px */
+            font-weight: 600;
+            color: #64748b; /* slate-500 */
+            letter-spacing: 0.05em;
+        }
+
+        tbody tr:hover {
+            background-color: #f8fafc; /* slate-50 */
+            transition: background-color 0.2s ease-in-out;
+        }
+
+        /* Code Block and Line Numbering Styles */
+        pre {
+            background-color: #1e293b; /* slate-800 */
+            color: #e2e8f0; /* slate-200 */
+            padding: 1.5rem;
+            border-radius: 0.75rem;
+            overflow-x: auto;
+            font-size: 0.875rem; /* 14px */
+            line-height: 1.7; /* Increased for readability */
+        }
+        
+        .line-numbers-container {
+            position: relative;
+            padding-left: 4rem; 
+            counter-reset: line-number;
+        }
+
+        .line-numbers-container .line {
+            display: block;
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+
+        .line-numbers-container .line::before {
+            content: counter(line-number);
+            counter-increment: line-number;
+            position: absolute;
+            left: 0;
+            width: 3rem;
+            text-align: right;
+            color: #64748b; /* slate-500 */
+            font-size: 0.8rem;
+            user-select: none;
+            padding-right: 1rem;
+        }
+        
+        /* Message Box and Notification Styles */
+        .message-box {
+            padding: 1rem 1.5rem;
+            border-radius: 0.75rem;
+            margin-bottom: 1.5rem;
+            font-weight: 500;
+            border-width: 1px;
+            opacity: 0;
+            transition: opacity 0.4s ease, transform 0.4s ease;
+            transform: translateY(10px);
+        }
+        .message-box.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        
+        #transient-notification {
+            position: fixed;
+            top: 1.5rem;
+            right: 1.5rem;
+            color: white;
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.5rem;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            opacity: 0;
+            transform: translateY(-20px) scale(0.95);
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 1000;
+            font-weight: 500;
+        }
+        #transient-notification.show {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+        }
+
+        /* Loading Spinner */
+        .loading-spinner {
+            border: 4px solid #e2e8f0; /* slate-200 */
+            border-top: 4px solid #3b82f6; /* blue-500 */
+            border-radius: 50%;
+            width: 48px;
+            height: 48px;
+            animation: spin 1s linear infinite;
+            margin: 2rem auto;
+            opacity: 0;
+            transition: opacity 0.3s ease-in-out;
+        }
+        .loading-spinner.show {
+            opacity: 1;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        /* General animated reveal for sections */
+        .revealable {
+            opacity: 0;
+            transform: translateY(20px);
+            transition: opacity 0.5s ease, transform 0.5s ease;
+        }
+        .revealable.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        /* Tab styling */
+        .tabs {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 2rem;
+            background-color: #e2e8f0;
+            border-radius: 0.75rem;
+            padding: 0.5rem;
+            box-shadow: inset 0 1px 3px rgba(0,0,0,0.1);
+        }
+        .tab-button {
+            flex: 1;
+            padding: 1rem 1.5rem;
+            font-weight: 600;
+            color: #475569;
+            border-radius: 0.5rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-align: center;
+        }
+        .tab-button.active {
+            background-color: #ffffff;
+            color: #3b82f6;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+        .tab-button:hover:not(.active) {
+            background-color: #f0f4f8;
+        }
+        .tab-content {
+            display: none;
+            padding: 1rem;
+            border: 1px solid #e2e8f0;
+            border-radius: 0.75rem;
+            margin-top: 1rem;
+            background-color: #ffffff;
+            box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1);
+        }
+        .tab-content.active {
+            display: block;
+        }
+        /* Style for hidden elements to prevent CLS */
+        .hidden-visually {
+            display: none;
+            visibility: hidden;
+            height: 0;
+            overflow: hidden;
+        }
+    </style>
+    <!-- JSZip for client-side ZIP handling, deferred to not block rendering -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js" defer></script>
+</head>
+<body class="bg-slate-50">
+    <div class="container">
+        <!-- Header Section -->
+        <div class="text-center mb-12">
+            <h1 class="text-5xl font-extrabold mb-4">🔐 SSL/HTTPS Vulnerability Scanner</h1>
+            <p class="text-lg text-slate-600 max-w-2xl mx-auto">
+                Analyze your Java code for insecure usage of **X509TrustManager**,
+                **HostnameVerifier**, weak **cipher suites**, and more. Get suggestions and **auto-patch** options.
+            </p>
+        </div>
+
+        <!-- Tab Navigation -->
+        <div class="tabs">
+            <button class="tab-button active" data-tab="upload-file">📤 Upload .java File</button>
+            <button class="tab-button" data-tab="paste-code">📝 Paste Java Code</button>
+            <button class="tab-button" data-tab="upload-zip">🗂️ Upload ZIP Archive</button>
+        </div>
+
+        <!-- Tab Content: Upload .java File -->
+        <div id="upload-file-tab-content" class="tab-content active">
+            <h2 class="text-3xl font-bold mb-6 text-slate-700">📂 Upload a Single Java File</h2>
+            <div class="file-upload-container mb-10 text-center relative" id="single-file-drop-area">
+                <input type="file" id="single-file-upload" accept=".java" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer">
+                <div class="flex flex-col items-center justify-center p-8 pointer-events-none">
+                    <svg class="w-16 h-16 text-sky-500 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" stroke-width="1">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                    </svg>
+                    <p class="text-lg font-semibold text-slate-700 mb-2">Drag & Drop or Click to Upload</p>
+                    <span id="single-file-name" class="block text-slate-500 text-sm">No file chosen</span>
+                </div>
+            </div>
+            <div class="text-center">
+                <button id="scan-single-file-button" class="button bg-blue-600 text-white hover:bg-blue-700">
+                    Scan for Vulnerabilities
+                </button>
+            </div>
+        </div>
+
+        <!-- Tab Content: Paste Java Code -->
+        <div id="paste-code-tab-content" class="tab-content">
+            <h2 class="text-3xl font-bold mb-6 text-slate-700">✍️ Paste Java Code</h2>
+            <textarea id="pasted-code-textarea" class="w-full p-4 border border-slate-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-200" rows="15" placeholder="public class MyClass {&#10;    // ... your Java code ...&#10;}"></textarea>
+            <div class="text-center mt-6">
+                <button id="scan-pasted-code-button" class="button bg-blue-600 text-white hover:bg-blue-700">
+                    Scan Pasted Code
+                </button>
+            </div>
+        </div>
+
+        <!-- Tab Content: Upload ZIP Archive -->
+        <div id="upload-zip-tab-content" class="tab-content">
+            <h2 class="text-3xl font-bold mb-6 text-slate-700">🗂️ Upload ZIP Archive</h2>
+            <div class="file-upload-container mb-10 text-center relative" id="zip-file-drop-area">
+                <input type="file" id="zip-file-upload" accept=".zip" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer">
+                <div class="flex flex-col items-center justify-center p-8 pointer-events-none">
+                    <svg class="w-16 h-16 text-sky-500 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" stroke-width="1">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5"></path>
+                    </svg>
+                    <p class="text-lg font-semibold text-slate-700 mb-2">Drag & Drop or Click to Upload ZIP</p>
+                    <span id="zip-file-name" class="block text-slate-500 text-sm">No ZIP file chosen</span>
+                </div>
+            </div>
+            <div class="text-center">
+                <button id="process-zip-button" class="button bg-blue-600 text-white hover:bg-blue-700">
+                    Process ZIP Archive
+                </button>
+            </div>
+            <!-- Dynamic content for ZIP file analysis results will be injected here -->
+            <div id="zip-results-container" class="mt-8"></div>
+        </div>
+
+
+        <!-- Universal Loading & Message areas -->
+        <div id="loading-analysis" class="loading-spinner"></div>
+        <div id="analysis-message" class="message-box mt-8"></div>
+
+        <!-- Universal Analysis Results Section -->
+        <div id="analysis-results" class="revealable mt-12 hidden-visually">
+            <h2 class="text-3xl font-bold mb-6 text-slate-700">Analysis Results</h2>
+            <div class="table-container">
+                <table class="min-w-full">
+                    <thead>
+                        <tr>
+                            <th class="px-6 py-4">Line</th>
+                            <th class="px-6 py-4">Severity</th>
+                            <th class="px-6 py-4">Issue</th>
+                            <th class="px-6 py-4">Suggestion</th>
+                            <th class="px-6 py-4">Code Snippet</th>
+                        </tr>
+                    </thead>
+                    <tbody id="results-table-body" class="bg-white divide-y divide-slate-200">
+                        <!-- Results will be injected here by JavaScript -->
+                    </tbody>
+                </table>
+            </div>
+            <div id="no-vulnerabilities-message" class="message-box success mt-6 border-green-300 bg-green-50 text-green-800 hidden">
+                ✅ No SSL/HTTPS vulnerabilities found. Your code looks secure!
+            </div>
+        </div>
+
+        <!-- Universal Auto-Patch Section -->
+        <div id="auto-patch-section" class="revealable mt-16 text-center hidden-visually">
+            <h2 class="text-3xl font-bold mb-5 text-slate-700">Auto-Patch Code</h2>
+            <button id="patch-button" class="button bg-emerald-600 text-white hover:bg-emerald-700">
+                Generate Patched Code
+            </button>
+
+            <!-- Loading & Message areas for Patching -->
+            <div id="loading-patch" class="loading-spinner"></div>
+            <div id="patch-message" class="message-box mt-6"></div>
+
+            <div id="patched-code-display" class="revealable mt-8 text-left hidden-visually">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-2xl font-bold text-slate-600">Patched Java Code:</h3>
+                    <button class="button text-sm py-2 px-4 bg-slate-700 text-white hover:bg-slate-800" onclick="copyToClipboard('patched-code-pre')">Copy Code</button>
+                </div>
+                <pre id="patched-code-pre" class="mt-2 line-numbers-container"></pre>
+                
+                <!-- PATCH LOG DETAILS -->
+                <div id="patch-log-details" class="revealable mt-8 hidden-visually">
+                    <h4 class="font-semibold text-xl mb-3 text-sky-800">Patch Log Details:</h4>
+                    <pre id="patch-log-pre" class="bg-sky-50 text-sky-900 border border-sky-200"></pre>
+                    <div class="text-sm mt-3 text-sky-700">The patch log shows all changes (line numbers and descriptions) applied by the Auto-Patcher.</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Transient Notification for copy success -->
+    <div id="transient-notification"></div>
+
+    <script>
+        // DOM Element References
+        const tabButtons = document.querySelectorAll('.tab-button');
+        const tabContents = document.querySelectorAll('.tab-content');
+
+        // For single file upload
+        const singleFileInput = document.getElementById('single-file-upload');
+        const singleFileNameSpan = document.getElementById('single-file-name');
+        const scanSingleFileButton = document.getElementById('scan-single-file-button');
+        const singleFileDropArea = document.getElementById('single-file-drop-area');
+
+        // For paste code
+        const pastedCodeTextarea = document.getElementById('pasted-code-textarea');
+        const scanPastedCodeButton = document.getElementById('scan-pasted-code-button');
+
+        // For ZIP file upload
+        const zipFileInput = document.getElementById('zip-file-upload');
+        const zipFileNameSpan = document.getElementById('zip-file-name');
+        const processZipButton = document.getElementById('process-zip-button');
+        const zipFileDropArea = document.getElementById('zip-file-drop-area');
+        const zipResultsContainer = document.getElementById('zip-results-container');
+
+        // Universal elements for results and feedback
+        const loadingAnalysis = document.getElementById('loading-analysis');
+        const loadingPatch = document.getElementById('loading-patch');
+        const analysisMessage = document.getElementById('analysis-message');
+        const analysisResultsDiv = document.getElementById('analysis-results');
+        const resultsTableBody = document.getElementById('results-table-body');
+        const noVulnerabilitiesMessage = document.getElementById('no-vulnerabilities-message');
+        const autoPatchSection = document.getElementById('auto-patch-section');
+        const patchButton = document.getElementById('patch-button');
+        const patchedCodeDisplay = document.getElementById('patched-code-display');
+        const patchedCodePre = document.getElementById('patched-code-pre');
+        const patchMessage = document.getElementById('patch-message');
+        const patchLogDetails = document.getElementById('patch-log-details');
+        const patchLogPre = document.getElementById('patch-log-pre');
+        const transientNotification = document.getElementById('transient-notification');
+
+        // Global state variables for current file/code being processed
+        let currentProcessedFile = null; // Stores File object for single .java or null
+        let currentProcessedCodeString = null; // Stores string for pasted code
+        let currentProcessedZipFile = null; // Stores File object for ZIP
+
+        // Cache for analysis and patch results to prevent redundant API calls
+        const analysisCache = new Map(); // Key: file hash, Value: { analysis_items, complete_sanitized_code_overall }
+        const patchCache = new Map(); // Key: file hash, Value: { patched_code, patch_logs }
+
+        // --- Utility Functions ---
+
+        // Calculates MD5 hash of a File object's content
+        async function calculateFileHash(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = function(event) {
+                    const arrayBuffer = event.target.result;
+                    const byteArray = new Uint8Array(arrayBuffer);
+                    let hash = 0;
+                    // Simple hash for demonstration; for strong hash, use crypto.subtle.digest
+                    for (let i = 0; i < byteArray.length; i++) {
+                        hash = (hash << 5) - hash + byteArray[i];
+                        hash |= 0; // Convert to 32bit integer
+                    }
+                    resolve(hash.toString());
+                };
+                reader.onerror = reject;
+                reader.readAsArrayBuffer(file);
+            });
+        }
+
+        // Calculates MD5 hash of a string
+        function calculateStringHash(str) {
+            let hash = 0;
+            for (let i = 0; i < str.length; i++) {
+                const char = str.charCodeAt(i);
+                hash = ((hash << 5) - hash) + char;
+                hash |= 0; // Convert to 32bit integer
+            }
+            return hash.toString();
+        }
+
+        // Shows a persistent message (e.g., for errors or success)
+        function showPersistentMessage(element, type, message) {
+            const colors = {
+                info: 'border-sky-300 bg-sky-50 text-sky-800',
+                success: 'border-green-300 bg-green-50 text-green-800',
+                warning: 'border-amber-300 bg-amber-50 text-amber-800',
+                error: 'border-red-300 bg-red-50 text-red-800',
+            };
+            element.className = `message-box ${colors[type]}`; // Reset and apply new classes
+            element.innerHTML = message; // Use innerHTML to allow for bold/emojis
+            setTimeout(() => element.classList.add('show'), 10); // Animate in
+        }
+
+        // Hides a persistent message
+        function hidePersistentMessage(element) {
+            element.classList.remove('show');
+        }
+        
+        // Shows a short-lived notification (e.g., "Copied!")
+        function showTransientNotification(message, type = 'success') {
+             const colors = {
+                success: 'bg-green-500',
+                error: 'bg-red-500',
+            };
+            transientNotification.textContent = message;
+            transientNotification.className = ``; // Clear classes
+            transientNotification.classList.add(colors[type]);
+            
+            transientNotification.classList.add('show');
+
+            setTimeout(() => {
+                transientNotification.classList.remove('show');
+            }, 2500);
+        }
+
+        // Toggles visibility of a loading spinner
+        function toggleLoadingSpinner(spinnerElement, show) {
+            if (show) spinnerElement.classList.add('show');
+            else spinnerElement.classList.remove('show');
+        }
+        
+        // Toggles visibility of a major UI section with an animation
+        function toggleSectionVisibility(sectionElement, show) {
+             if (show) {
+                sectionElement.classList.remove('hidden-visually'); // Remove hidden first
+                setTimeout(() => sectionElement.classList.add('show'), 10); // Then add show for animation
+            } else {
+                sectionElement.classList.remove('show');
+                // Use a short delay before hiding to allow CSS transition to complete
+                setTimeout(() => sectionElement.classList.add('hidden-visually'), 500);
+            }
+        }
+        
+        // Resets the UI to its initial state before a scan
+        function resetUniversalUI() {
+            hidePersistentMessage(analysisMessage);
+            hidePersistentMessage(patchMessage);
+            toggleSectionVisibility(analysisResultsDiv, false);
+            toggleSectionVisibility(autoPatchSection, false);
+            toggleSectionVisibility(patchedCodeDisplay, false);
+            toggleSectionVisibility(patchLogDetails, false);
+            noVulnerabilitiesMessage.classList.add('hidden'); // This one has a specific class toggle
+            resultsTableBody.innerHTML = '';
+            patchedCodePre.innerHTML = '';
+            patchLogPre.textContent = '';
+            patchButton.disabled = true; // Always disable patch button initially
+        }
+
+        // Severity to Emoji mapping
+        function getSeverityBadge(severity) {
+            const styles = {
+                CRITICAL: 'bg-red-100 text-red-800',
+                HIGH: 'bg-orange-100 text-orange-800',
+                MEDIUM: 'bg-amber-100 text-amber-800',
+                LOW: 'bg-slate-100 text-slate-800',
+                INFO: 'bg-blue-100 text-blue-800', // Added INFO style
+                UNKNOWN: 'bg-gray-100 text-gray-800',
+                ERROR: 'bg-red-200 text-red-900',
+            };
+            const emoji = {
+                CRITICAL: '🔴', HIGH: '🔥', MEDIUM: '🟡', LOW: '⚪️', INFO: 'ℹ️', UNKNOWN: '❓', ERROR: '❗'
+            }
+            return `<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${styles[severity] || styles.UNKNOWN}">
+                        ${emoji[severity] || emoji.UNKNOWN} ${severity}
+                    </span>`;
+        }
+
+        // Helper to format code with line numbers and escape HTML
+        function formatCodeWithLineNumbers(codeString) {
+            if (!codeString) return '';
+            const lines = codeString.split('\n');
+            let html = '<div class="line-numbers-container">';
+            const escapeDiv = document.createElement('div');
+            lines.forEach(line => {
+                escapeDiv.textContent = line; // Sanitize HTML
+                html += `<span class="line">${escapeDiv.innerHTML || '&nbsp;'}</span>`;
+            });
+            html += '</div>';
+            return html;
+        }
+
+        // --- Core API Call Function ---
+        async function callBackendApi(endpoint, fileName, fileContent, timeout = 30000) {
+            const api_url = `/${endpoint}`; // Use relative path for Docker compatibility
+            const formData = new FormData();
+            // fileContent can be Blob (for File) or string (for pasted code)
+            const blob = fileContent instanceof File ? fileContent : new Blob([fileContent], { type: 'text/plain' });
+            formData.append('file', blob, fileName);
+
+            try {
+                const response = await fetch(api_url, {
+                    method: 'POST',
+                    body: formData,
+                    signal: AbortSignal.timeout(timeout) 
+                });
+
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    throw new Error(`Server error: ${response.status} - ${errorText}`);
+                }
+
+                return { ok: true, data: await response.json() };
+            } catch (error) {
+                let errorMessage = `API call to '${endpoint}' failed: ${error.message}.`;
+                if (error.name === 'AbortError') {
+                    errorMessage = `API call to '${endpoint}' timed out. The server took too long to respond.`;
+                } else if (error.message.includes('Failed to fetch')) {
+                    errorMessage = `Connection failed. Is the backend server running? Check the browser's network tab for details.`;
+                }
+                return { ok: false, error: errorMessage };
+            }
+        }
+
+        // --- Display Analysis Results ---
+        function displayAnalysisResults(analysisItems, targetTableBody, showPatchButton = true) {
+            targetTableBody.innerHTML = ''; // Clear previous results
+            const tableContainer = targetTableBody.closest('.table-container'); // Get the parent table container
+            
+            // Check for specific "No vulnerabilities found" or error messages
+            if (analysisItems.length === 1 && analysisItems[0].severity === "INFO" && 
+                analysisItems[0].issue === "No vulnerabilities found by analyzer.") {
+                noVulnerabilitiesMessage.classList.remove('hidden');
+                noVulnerabilitiesMessage.classList.add('show'); // Make it visible
+                toggleSectionVisibility(analysisResultsDiv, true);
+                toggleSectionVisibility(autoPatchSection, false); // No need for patch button
+                patchButton.disabled = true;
+                if (tableContainer) tableContainer.classList.add('hidden'); // Hide table container
+                return false; // No vulnerabilities found
+            } else if (analysisItems.length === 1 && analysisItems[0].severity === "ERROR") {
+                showPersistentMessage(analysisMessage, 'error', `**❗ Analysis Error**: ${analysisItems[0].issue}`);
+                toggleSectionVisibility(analysisResultsDiv, false); // Hide analysis results div completely for errors
+                if (tableContainer) tableContainer.classList.add('hidden'); // Hide table container
+                toggleSectionVisibility(autoPatchSection, false);
+                patchButton.disabled = true;
+                return false; // Error occurred
+            }
+
+            // Filter out specific info/error messages for display in table
+            const validIssues = analysisItems.filter(item => 
+                item.severity !== "ERROR" && 
+                !(item.severity === "INFO" && item.issue === "No vulnerabilities found by analyzer.")
+            );
+
+            if (validIssues.length > 0) {
+                if (tableContainer) tableContainer.classList.remove('hidden'); // Ensure table is visible
+                validIssues.forEach((item, index) => {
+                    const row = targetTableBody.insertRow();
+                    row.className = 'transition-opacity duration-500 opacity-0';
+                    const issueSummary = item.issue ? item.issue.split(':', 1)[0].trim() : 'N/A';
+                    const fullIssueDetails = item.issue || '-';
+                    const suggestionDetails = item.suggestion || 'N/A';
+
+                    row.innerHTML = `
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900">${item.line || '-'}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm">${getSeverityBadge(item.severity)}</td>
+                        <td class="px-6 py-4 text-sm text-slate-600 max-w-xs overflow-hidden text-ellipsis">${fullIssueDetails}</td>
+                        <td class="px-6 py-4 text-sm text-slate-600 max-w-xs overflow-hidden text-ellipsis">${suggestionDetails}</td>
+                        <td class="px-6 py-4 font-mono text-xs max-w-sm">
+                            ${item.sanitized_code ? `<pre class="bg-slate-100 p-2 rounded-md border border-slate-200 text-slate-700 line-numbers-container">${formatCodeWithLineNumbers(item.sanitized_code)}</pre>` : '-'}
+                        </td>
+                    `;
+                    setTimeout(() => row.style.opacity = 1, 100 + (index * 50));
+                });
+                toggleSectionVisibility(analysisResultsDiv, true);
+                if (showPatchButton) {
+                    toggleSectionVisibility(autoPatchSection, true);
+                    patchButton.disabled = false;
+                } else {
+                    toggleSectionVisibility(autoPatchSection, false); // No universal patch button for ZIP individual files
+                    patchButton.disabled = true;
+                }
+                return true; // Vulnerabilities found
+            } else {
+                // This else is for when validIssues.length is 0, meaning no actual vulns after filtering
+                noVulnerabilitiesMessage.classList.remove('hidden');
+                noVulnerabilitiesMessage.classList.add('show'); // Make it visible
+                toggleSectionVisibility(analysisResultsDiv, true);
+                toggleSectionVisibility(autoPatchSection, false); // No need for patch button
+                patchButton.disabled = true;
+                if (tableContainer) tableContainer.classList.add('hidden'); // Hide table container
+                return false; // No vulnerabilities found
+            }
+        }
+
+        // --- Tab Switching Logic ---
+        tabButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                const targetTab = button.dataset.tab;
+
+                tabButtons.forEach(btn => btn.classList.remove('active'));
+                button.classList.add('active');
+
+                tabContents.forEach(content => {
+                    if (content.id === `${targetTab}-tab-content`) {
+                        content.classList.add('active');
+                    } else {
+                        content.classList.remove('active');
+                    }
+                });
+                resetUniversalUI(); // Reset UI when switching tabs
+                // Clear selected files/code for consistency
+                currentProcessedFile = null;
+                singleFileNameSpan.textContent = 'No file chosen';
+                singleFileNameSpan.classList.remove('font-semibold', 'text-sky-700');
+                scanSingleFileButton.disabled = true;
+
+                currentProcessedCodeString = null;
+                pastedCodeTextarea.value = '';
+                scanPastedCodeButton.disabled = false; // Always enabled for text area
+
+                currentProcessedZipFile = null;
+                zipFileNameSpan.textContent = 'No ZIP file chosen';
+                zipFileNameSpan.classList.remove('font-semibold', 'text-sky-700');
+                processZipButton.disabled = true;
+                zipResultsContainer.innerHTML = ''; // Clear ZIP specific results
+
+                // Optionally, clear caches if switching tabs should completely reset the app's memory
+                // For this app, it's probably better to keep caches separate per type for a smoother UX if user goes back and forth
+                // analysisCache.clear();
+                // patchCache.clear();
+            });
+        });
+
+        // --- Logic for Upload .java File Tab ---
+        function handleSingleFileSelect(file) {
+            if (file && file.name.endsWith('.java')) {
+                currentProcessedFile = file;
+                singleFileNameSpan.textContent = currentProcessedFile.name;
+                singleFileNameSpan.classList.add('font-semibold', 'text-sky-700');
+                scanSingleFileButton.disabled = false;
+                resetUniversalUI();
+            } else {
+                showTransientNotification('Please select a .java file.', 'error');
+                currentProcessedFile = null;
+                singleFileNameSpan.textContent = 'No file chosen';
+                singleFileNameSpan.classList.remove('font-semibold', 'text-sky-700');
+                scanSingleFileButton.disabled = true;
+                resetUniversalUI();
+            }
+        }
+        
+        singleFileInput.addEventListener('change', (event) => handleSingleFileSelect(event.target.files[0]));
+        
+        // Drag and Drop listeners for single file
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            singleFileDropArea.addEventListener(eventName, e => { e.preventDefault(); e.stopPropagation(); });
+        });
+        ['dragenter', 'dragover'].forEach(eventName => {
+            singleFileDropArea.addEventListener(eventName, () => { singleFileDropArea.classList.add('bg-sky-50', 'border-sky-300'); });
+        });
+        ['dragleave', 'drop'].forEach(eventName => {
+            singleFileDropArea.addEventListener(eventName, () => { singleFileDropArea.classList.remove('bg-sky-50', 'border-sky-300'); });
+        });
+        singleFileDropArea.addEventListener('drop', (event) => { handleSingleFileSelect(event.dataTransfer.files[0]); });
+        
+        scanSingleFileButton.addEventListener('click', async () => {
+            if (!currentProcessedFile) {
+                showPersistentMessage(analysisMessage, 'error', 'Please select a Java file to scan.');
+                return;
+            }
+
+            resetUniversalUI();
+            toggleLoadingSpinner(loadingAnalysis, true);
+            scanSingleFileButton.disabled = true;
+
+            const fileHash = await calculateFileHash(currentProcessedFile);
+            if (analysisCache.has(fileHash)) {
+                const cachedData = analysisCache.get(fileHash);
+                const vulnerabilitiesFound = displayAnalysisResults(cachedData.analysis_items, resultsTableBody);
+
+                if (cachedData.complete_sanitized_code_overall) {
+                    showPersistentMessage(analysisMessage, 'info', 'Cached analysis loaded. Full auto-patched code available.');
+                    patchedCodePre.innerHTML = formatCodeWithLineNumbers(cachedData.complete_sanitized_code_overall);
+                    toggleSectionVisibility(patchedCodeDisplay, true);
+                    patchButton.disabled = true;
+                } else if (vulnerabilitiesFound) {
+                    showPersistentMessage(analysisMessage, 'info', 'Cached analysis loaded. Review findings and consider auto-patching.');
+                } else {
+                    showPersistentMessage(analysisMessage, 'info', 'Cached analysis loaded. No vulnerabilities found.');
+                }
+
+                toggleLoadingSpinner(loadingAnalysis, false);
+                scanSingleFileButton.disabled = false;
+                return;
+            }
+
+            const analysisResult = await callBackendApi('analyze', currentProcessedFile.name, currentProcessedFile, 30000);
+
+            if (analysisResult.ok) {
+                const resultsPayload = analysisResult.data.report || [];
+                const tempAnalysisItems = [];
+                let completeSanitizedCodeOverall = null;
+
+                resultsPayload.forEach(item => {
+                    if ("complete_sanitized_code" in item) {
+                        completeSanitizedCodeOverall = item.complete_sanitized_code;
+                    } else {
+                        tempAnalysisItems.push(item);
+                    }
+                });
+
+                const analysisItemsToCache = tempAnalysisItems.length > 0 ? tempAnalysisItems : [{"issue": "No vulnerabilities found by analyzer.", "severity": "INFO"}];
+                
+                // Cache the results
+                analysisCache.set(fileHash, {
+                    analysis_items: analysisItemsToCache,
+                    complete_sanitized_code_overall: completeSanitizedCodeOverall
+                });
+
+                const vulnerabilitiesFound = displayAnalysisResults(analysisItemsToCache, resultsTableBody);
+                if (completeSanitizedCodeOverall) {
+                    showPersistentMessage(analysisMessage, 'success', 'Analysis complete. Full auto-patched code available.');
+                    patchedCodePre.innerHTML = formatCodeWithLineNumbers(completeSanitizedCodeOverall);
+                    toggleSectionVisibility(patchedCodeDisplay, true);
+                    patchButton.disabled = true; // No separate patch button if full code is already returned
+                } else if (vulnerabilitiesFound) {
+                    showPersistentMessage(analysisMessage, 'success', 'Analysis complete. Review findings and consider auto-patching.');
+                } else {
+                    showPersistentMessage(analysisMessage, 'success', 'Analysis complete. No vulnerabilities found.');
+                }
+            } else {
+                showPersistentMessage(analysisMessage, 'error', analysisResult.error);
+            }
+            toggleLoadingSpinner(loadingAnalysis, false);
+            scanSingleFileButton.disabled = false;
+        });
+
+        // --- Logic for Paste Java Code Tab ---
+        scanPastedCodeButton.addEventListener('click', async () => {
+            const pastedCode = pastedCodeTextarea.value.trim();
+            if (!pastedCode) {
+                showPersistentMessage(analysisMessage, 'error', 'Please paste some Java code to scan.');
+                return;
+            }
+            
+            resetUniversalUI();
+            toggleLoadingSpinner(loadingAnalysis, true);
+            scanPastedCodeButton.disabled = true;
+
+            currentProcessedCodeString = pastedCode;
+            const codeHash = calculateStringHash(pastedCode);
+
+            if (analysisCache.has(codeHash)) {
+                const cachedData = analysisCache.get(codeHash);
+                const vulnerabilitiesFound = displayAnalysisResults(cachedData.analysis_items, resultsTableBody);
+
+                if (cachedData.complete_sanitized_code_overall) {
+                    showPersistentMessage(analysisMessage, 'info', 'Cached analysis loaded. Full auto-patched code available.');
+                    patchedCodePre.innerHTML = formatCodeWithLineNumbers(cachedData.complete_sanitized_code_overall);
+                    toggleSectionVisibility(patchedCodeDisplay, true);
+                    patchButton.disabled = true;
+                } else if (vulnerabilitiesFound) {
+                    showPersistentMessage(analysisMessage, 'info', 'Cached analysis loaded. Review findings and consider auto-patching.');
+                } else {
+                    showPersistentMessage(analysisMessage, 'info', 'Cached analysis loaded. No vulnerabilities found.');
+                }
+
+                toggleLoadingSpinner(loadingAnalysis, false);
+                scanPastedCodeButton.disabled = false;
+                return;
+            }
+
+            const analysisResult = await callBackendApi('analyze', 'pasted_code.java', pastedCode, 30000);
+
+            if (analysisResult.ok) {
+                const resultsPayload = analysisResult.data.report || [];
+                const tempAnalysisItems = [];
+                let completeSanitizedCodeOverall = null;
+
+                resultsPayload.forEach(item => {
+                    if ("complete_sanitized_code" in item) {
+                        completeSanitizedCodeOverall = item.complete_sanitized_code;
+                    } else {
+                        tempAnalysisItems.push(item);
+                    }
+                });
+
+                const analysisItemsToCache = tempAnalysisItems.length > 0 ? tempAnalysisItems : [{"issue": "No vulnerabilities found by analyzer.", "severity": "INFO"}];
+                
+                // Cache the results
+                analysisCache.set(codeHash, {
+                    analysis_items: analysisItemsToCache,
+                    complete_sanitized_code_overall: completeSanitizedCodeOverall
+                });
+
+                const vulnerabilitiesFound = displayAnalysisResults(analysisItemsToCache, resultsTableBody);
+                if (completeSanitizedCodeOverall) {
+                    showPersistentMessage(analysisMessage, 'success', 'Analysis complete. Full auto-patched code available.');
+                    patchedCodePre.innerHTML = formatCodeWithLineNumbers(completeSanitizedCodeOverall);
+                    toggleSectionVisibility(patchedCodeDisplay, true);
+                    patchButton.disabled = true;
+                } else if (vulnerabilitiesFound) {
+                    showPersistentMessage(analysisMessage, 'success', 'Analysis complete. Review findings and consider auto-patching.');
+                } else {
+                    showPersistentMessage(analysisMessage, 'success', 'Analysis complete. No vulnerabilities found.');
+                }
+            } else {
+                showPersistentMessage(analysisMessage, 'error', analysisResult.error);
+            }
+            toggleLoadingSpinner(loadingAnalysis, false);
+            scanPastedCodeButton.disabled = false;
+        });
+
+        // --- Logic for Upload ZIP Archive Tab ---
+        function handleZipFileSelect(file) {
+            if (file && file.name.endsWith('.zip')) {
+                currentProcessedZipFile = file;
+                zipFileNameSpan.textContent = currentProcessedZipFile.name;
+                zipFileNameSpan.classList.add('font-semibold', 'text-sky-700');
+                processZipButton.disabled = false;
+                resetUniversalUI();
+                zipResultsContainer.innerHTML = ''; // Clear previous ZIP results
+            } else {
+                showTransientNotification('Please select a .zip file.', 'error');
+                currentProcessedZipFile = null;
+                zipFileNameSpan.textContent = 'No ZIP file chosen';
+                zipFileNameSpan.classList.remove('font-semibold', 'text-sky-700');
+                processZipButton.disabled = true;
+                resetUniversalUI();
+                zipResultsContainer.innerHTML = ''; // Clear previous ZIP results
+            }
+        }
+
+        zipFileInput.addEventListener('change', (event) => handleZipFileSelect(event.target.files[0]));
+
+        // Drag and Drop listeners for ZIP file
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            zipFileDropArea.addEventListener(eventName, e => { e.preventDefault(); e.stopPropagation(); });
+        });
+        ['dragenter', 'dragover'].forEach(eventName => {
+            zipFileDropArea.addEventListener(eventName, () => { zipFileDropArea.classList.add('bg-sky-50', 'border-sky-300'); });
+        });
+        ['dragleave', 'drop'].forEach(eventName => {
+            zipFileDropArea.addEventListener(eventName, () => { zipFileDropArea.classList.remove('bg-sky-50', 'border-sky-300'); });
+        });
+        zipFileDropArea.addEventListener('drop', (event) => { handleZipFileSelect(event.dataTransfer.files[0]); });
+
+        processZipButton.addEventListener('click', async () => {
+            if (!currentProcessedZipFile) {
+                showPersistentMessage(analysisMessage, 'error', 'Please upload a ZIP file to process.');
+                return;
+            }
+
+            resetUniversalUI();
+            zipResultsContainer.innerHTML = '';
+            toggleLoadingSpinner(loadingAnalysis, true);
+            processZipButton.disabled = true;
+            showPersistentMessage(analysisMessage, 'info', 'Processing ZIP file. This may take a moment...');
+
+            const zipFileHash = await calculateFileHash(currentProcessedZipFile);
+            const cachedZipResults = analysisCache.get(zipFileHash);
+
+            if (cachedZipResults) {
+                showPersistentMessage(analysisMessage, 'info', 'ZIP analysis results loaded from cache.');
+                await displayZipFileResults(cachedZipResults);
+                toggleLoadingSpinner(loadingAnalysis, false);
+                processZipButton.disabled = false;
+                return;
+            }
+
+            try {
+                if (typeof JSZip === 'undefined') {
+                    throw new Error("JSZip library is not loaded. Cannot process ZIP file.");
+                }
+                const zip = await JSZip.loadAsync(currentProcessedZipFile);
+                const javaFiles = Object.values(zip.files).filter(file => file.name.endsWith('.java') && !file.dir);
+
+                if (javaFiles.length === 0) {
+                    showPersistentMessage(analysisMessage, 'warning', 'No .java files found in the uploaded ZIP archive.');
+                    toggleLoadingSpinner(loadingAnalysis, false);
+                    processZipButton.disabled = false;
+                    return;
+                }
+                
+                showPersistentMessage(analysisMessage, 'info', `Found ${javaFiles.length} Java file(s). Starting analysis...`);
+
+                const zipAnalysisData = {};
+                const analysisPromises = javaFiles.map(async (zipEntry) => {
+                    const filename = zipEntry.name;
+                    const fileContent = await zipEntry.async("string");
+                    
+                    const analysisResult = await callBackendApi('analyze', filename, fileContent, 30000);
+
+                    if (analysisResult.ok) {
+                        const resultsPayload = analysisResult.data.report || [];
+                        const tempAnalysisItems = [];
+                        let completeSanitizedCodeOverall = null;
+
+                        resultsPayload.forEach(item => {
+                            if ("complete_sanitized_code" in item) {
+                                completeSanitizedCodeOverall = item.complete_sanitized_code;
+                            } else {
+                                tempAnalysisItems.push(item);
+                            }
+                        });
+                        
+                        const analysisItemsToStore = tempAnalysisItems.length > 0 ? tempAnalysisItems : [{"issue": "No vulnerabilities found by analyzer.", "severity": "INFO"}];
+                        
+                        zipAnalysisData[filename] = {
+                            analysis_items: analysisItemsToStore,
+                            complete_sanitized_code_overall: completeSanitizedCodeOverall
+                        };
+                    } else {
+                        zipAnalysisData[filename] = {
+                            analysis_items: [{ "issue": `Analysis Failed: ${analysisResult.error}`, "severity": "ERROR" }],
+                            complete_sanitized_code_overall: null
+                        };
+                    }
+                });
+
+                await Promise.all(analysisPromises);
+
+                analysisCache.set(zipFileHash, zipAnalysisData);
+                await displayZipFileResults(zipAnalysisData);
+                showPersistentMessage(analysisMessage, 'success', 'ZIP archive processed successfully. Review results below.');
+
+            } catch (error) {
+                let errorMessage = `ZIP processing failed: ${error.message}.`;
+                if (error.name === 'AbortError') {
+                    errorMessage = 'ZIP processing timed out. The server took too long to respond. This can happen with large archives.';
+                } else if (error.message.includes('Failed to fetch')) {
+                    errorMessage = 'Connection failed. Is the backend server running at `http://127.0.0.1:8000`?';
+                }
+                showPersistentMessage(analysisMessage, 'error', errorMessage);
+            } finally {
+                toggleLoadingSpinner(loadingAnalysis, false);
+                processZipButton.disabled = false;
+            }
+        });
+
+        async function displayZipFileResults(zipAnalysisData) {
+            zipResultsContainer.innerHTML = ''; // Clear previous display
+            if (Object.keys(zipAnalysisData).length === 0) {
+                zipResultsContainer.innerHTML = '<div class="message-box warning show border-amber-300 bg-amber-50 text-amber-800">No .java files found in the ZIP archive or no analysis results returned.</div>';
+                return;
+            }
+
+            // Pre-extract all file contents from the ZIP once for efficiency.
+            // This avoids re-reading and unzipping the entire archive for every patch action.
+            const fileContents = new Map();
+            try {
+                // Ensure JSZip is loaded before attempting to use it
+                if (typeof JSZip === 'undefined') {
+                    throw new Error("JSZip library is not loaded. Cannot process ZIP file contents.");
+                }
+                const zip = await JSZip.loadAsync(currentProcessedZipFile);
+                for (const filename in zipAnalysisData) {
+                    const zipFile = zip.file(filename);
+                    if (zipFile) {
+                        const content = await zipFile.async("string");
+                        fileContents.set(filename, content);
+                    }
+                }
+            } catch (e) {
+                showPersistentMessage(analysisMessage, 'error', `Failed to read contents of ZIP file: ${e.message}`);
+                return; // Stop rendering if we can't read the zip
+            }
+
+            for (const filename in zipAnalysisData) {
+                const fileData = zipAnalysisData[filename];
+                const analysisItems = fileData.analysis_items || [];
+                const completeSanitizedCode = fileData.complete_sanitized_code_overall || '';
+
+                // Create the section for each file's results
+                const fileSection = document.createElement('div');
+                fileSection.className = 'bg-white p-6 rounded-xl shadow-md mb-6';
+                fileSection.innerHTML = `
+                    <h3 class="text-2xl font-bold mb-4 text-slate-800">File: \`${filename}\`</h3>
+                    <div class="file-analysis-results">
+                        <div class="table-container mb-4">
+                            <table class="min-w-full">
+                                <thead>
+                                    <tr>
+                                        <th class="px-6 py-4">Line</th>
+                                        <th class="px-6 py-4">Severity</th>
+                                        <th class="px-6 py-4">Issue</th>
+                                        <th class="px-6 py-4">Suggestion</th>
+                                        <th class="px-6 py-4">Code Snippet</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="bg-white divide-y divide-slate-200">
+                                    <!-- Analysis results for this file -->
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="no-vulnerabilities-message message-box success mt-4 border-green-300 bg-green-50 text-green-800 hidden">
+                            ✅ No SSL/HTTPS vulnerabilities found in this file.
+                        </div>
+                    </div>
+                    <div class="file-patch-section mt-6 text-center">
+                        <button class="button bg-emerald-600 text-white hover:bg-emerald-700 patch-file-button" data-filename="${filename}">
+                            Generate Patched Code for This File
+                        </button>
+                        <div class="loading-spinner hidden" id="loading-patch-${filename.replace(/[^a-zA-Z0-9]/g, '-')}"></div>
+                        <div class="file-patch-message message-box mt-4 hidden"></div>
+                        <div class="patched-file-code-display mt-8 text-left hidden">
+                            <div class="flex justify-between items-center mb-4">
+                                <h4 class="text-xl font-bold text-slate-600">Patched Java Code:</h4>
+                                <button class="button text-sm py-2 px-4 bg-slate-700 text-white hover:bg-slate-800" onclick="copyToClipboard('patched-file-code-pre-${filename.replace(/[^a-zA-Z0-9]/g, '-')}')">Copy Code</button>
+                            </div>
+                            <pre class="mt-2 line-numbers-container" id="patched-file-code-pre-${filename.replace(/[^a-zA-Z0-9]/g, '-')}" ></pre>
+                            <div class="patched-file-log-details mt-8 hidden">
+                                <h5 class="font-semibold text-lg mb-3 text-sky-800">Patch Log Details:</h5>
+                                <pre class="bg-sky-50 text-sky-900 border border-sky-200" id="patched-file-log-pre-${filename.replace(/[^a-zA-Z0-9]/g, '-')}" ></pre>
+                                <div class="text-sm mt-3 text-sky-700">The patch log shows all changes (line numbers and descriptions) applied by the Auto-Patcher.</div>
+                            </div>
+                        </div>
+                    </div>
+                    <hr class="my-8 border-t border-slate-200">
+                `;
+                zipResultsContainer.appendChild(fileSection);
+
+                const fileTableBody = fileSection.querySelector('.file-analysis-results tbody');
+                const fileNoVulnMessage = fileSection.querySelector('.no-vulnerabilities-message');
+                const filePatchButton = fileSection.querySelector(`.patch-file-button`);
+                const fileLoadingPatch = fileSection.querySelector(`#loading-patch-${filename.replace(/[^a-zA-Z0-9]/g, '-')}`);
+                const filePatchMessage = fileSection.querySelector('.file-patch-message');
+                const patchedFileCodeDisplay = fileSection.querySelector('.patched-file-code-display');
+                const patchedFileCodePre = fileSection.querySelector(`#patched-file-code-pre-${filename.replace(/[^a-zA-Z0-9]/g, '-')}`);
+                const patchedFileLogDetails = fileSection.querySelector('.patched-file-log-details');
+                const patchedFileLogPre = fileSection.querySelector(`#patched-file-log-pre-${filename.replace(/[^a-zA-Z0-9]/g, '-')}`);
+
+                const fileTableContainer = fileSection.querySelector('.table-container'); // Get reference to the table container
+
+                // Display analysis for this specific file
+                if (analysisItems.length === 1 && analysisItems[0].severity === "INFO" && analysisItems[0].issue === "No vulnerabilities found by analyzer.") {
+                    fileNoVulnMessage.classList.add('show');
+                    fileNoVulnMessage.classList.remove('hidden');
+                    filePatchButton.classList.add('hidden'); // Hide patch button if no vulnerabilities
+                    fileTableContainer.classList.add('hidden'); // Hide the table if no vulnerabilities
+                } else if (analysisItems.length === 1 && analysisItems[0].severity === "ERROR") {
+                    showPersistentMessage(filePatchMessage, 'error', `**❗ Analysis Error for ${filename}**: ${analysisItems[0].issue}`);
+                    filePatchButton.classList.add('hidden');
+                    fileTableContainer.classList.add('hidden'); // Hide the table if there's an error
+                } else {
+                    const validIssues = analysisItems.filter(item => 
+                        item.severity !== "ERROR" && 
+                        !(item.severity === "INFO" && item.issue === "No vulnerabilities found by analyzer.")
+                    );
+                    if (validIssues.length > 0) {
+                        fileTableContainer.classList.remove('hidden'); // Ensure table is visible if vulnerabilities found
+                        validIssues.forEach(item => {
+                            const row = fileTableBody.insertRow();
+                            row.innerHTML = `
+                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900">${item.line || '-'}</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm">${getSeverityBadge(item.severity)}</td>
+                                <td class="px-6 py-4 text-sm text-slate-600 max-w-xs overflow-hidden text-ellipsis">${item.issue || 'N/A'}</td>
+                                <td class="px-6 py-4 text-sm text-slate-600 max-w-xs overflow-hidden text-ellipsis">${item.suggestion || 'N/A'}</td>
+                                <td class="px-6 py-4 font-mono text-xs max-w-sm">
+                                    ${item.sanitized_code ? `<pre class="bg-slate-100 p-2 rounded-md border border-slate-200 text-slate-700 line-numbers-container">${formatCodeWithLineNumbers(item.sanitized_code)}</pre>` : '-'}
+                                </td>
+                            `;
+                        });
+                        filePatchButton.classList.remove('hidden'); // Show patch button if vulnerabilities
+                    } else {
+                        // This branch handles cases where validIssues is empty after filtering, but it's not the specific INFO message.
+                        // It should also hide the table and show the no-vuln message.
+                        fileNoVulnMessage.classList.add('show');
+                        fileNoVulnMessage.classList.remove('hidden');
+                        filePatchButton.classList.add('hidden');
+                        fileTableContainer.classList.add('hidden'); // Hide the table if no valid issues
+                    }
+                }
+
+                // If complete sanitized code from analyzer is present, display it
+                if (completeSanitizedCode) {
+                    patchedFileCodePre.innerHTML = formatCodeWithLineNumbers(completeSanitizedCode);
+                    patchedFileCodeDisplay.classList.remove('hidden');
+                    showPersistentMessage(filePatchMessage, 'success', 'Full auto-patched code already provided by analyzer.');
+                    filePatchButton.classList.add('hidden'); // Hide individual patch button if already fully patched
+                    fileTableContainer.classList.add('hidden'); // Hide the table if full code is provided
+                    fileNoVulnMessage.classList.add('hidden'); // Hide no vuln message if full code is provided
+                }
+
+                // Attach event listener for individual patch button
+                filePatchButton.addEventListener('click', async () => {
+                    hidePersistentMessage(filePatchMessage);
+                    patchedFileCodeDisplay.classList.add('hidden');
+                    patchedFileLogDetails.classList.add('hidden');
+                    toggleLoadingSpinner(fileLoadingPatch, true);
+                    filePatchButton.disabled = true;
+
+                    try {
+                        const fileContent = fileContents.get(filename);
+                        if (typeof fileContent === 'undefined') { // Check for undefined, as content can be an empty string
+                            throw new Error(`Could not find pre-loaded content for ${filename}.`);
+                        }
+
+                        const patchResult = await callBackendApi('patch', filename, fileContent, 60000); // 60s timeout
+
+                        if (patchResult.ok) {
+                            const patchedCode = patchResult.data.patched_code || '';
+                            const patchLogs = patchResult.data.patch_logs || '';
+                            if (patchedCode) {
+                                patchedFileCodePre.innerHTML = formatCodeWithLineNumbers(patchedCode);
+                                patchedFileCodeDisplay.classList.remove('hidden');
+                                showPersistentMessage(filePatchMessage, 'success', 'Code successfully auto-patched! Review the changes below.');
+                                if (patchLogs && patchLogs.trim().length > 0) {
+                                    patchedFileLogPre.textContent = patchLogs;
+                                    patchedFileLogDetails.classList.remove('hidden');
+                                }
+                            } else {
+                                showPersistentMessage(filePatchMessage, 'warning', 'No patched code returned. This may mean no applicable patches were found.');
+                            }
+                        } else {
+                            showPersistentMessage(filePatchMessage, 'error', patchResult.error);
+                        }
+                    } catch (error) {
+                        showPersistentMessage(filePatchMessage, 'error', `Auto-patching failed for ${filename}: ${error.message}`);
+                    } finally {
+                        toggleLoadingSpinner(fileLoadingPatch, false);
+                        filePatchButton.disabled = false;
+                    }
+                });
+            }
+        }
+
+        // --- Universal Auto-Patch Button (for single file/pasted code) ---
+        patchButton.addEventListener('click', async () => {
+            let fileToPatch = null;
+            let fileNameToPatch = '';
+            let fileContentToPatch = '';
+
+            if (document.querySelector('.tab-button[data-tab="upload-file"]').classList.contains('active')) {
+                fileToPatch = currentProcessedFile;
+                fileNameToPatch = currentProcessedFile ? currentProcessedFile.name : '';
+                fileContentToPatch = currentProcessedFile; // Pass the File object directly
+            } else if (document.querySelector('.tab-button[data-tab="paste-code"]').classList.contains('active')) {
+                fileToPatch = true; // Indicate pasted code is active
+                fileNameToPatch = 'pasted_code.java';
+                fileContentToPatch = currentProcessedCodeString; // Pass the string content
+            } else {
+                showPersistentMessage(patchMessage, 'error', 'No single file or pasted code selected for patching.');
+                return;
+            }
+
+            if (!fileToPatch) {
+                showPersistentMessage(patchMessage, 'error', 'No content selected for patching.');
+                return;
+            }
+
+            hidePersistentMessage(patchMessage);
+            toggleSectionVisibility(patchedCodeDisplay, false);
+            toggleSectionVisibility(patchLogDetails, false);
+            toggleLoadingSpinner(loadingPatch, true);
+            patchButton.disabled = true;
+
+            let contentHash;
+            if (fileContentToPatch instanceof File) {
+                contentHash = await calculateFileHash(fileContentToPatch);
+            } else {
+                contentHash = calculateStringHash(fileContentToPatch);
+            }
+
+            if (patchCache.has(contentHash)) {
+                // Serve from cache
+                showPersistentMessage(patchMessage, 'info', 'Patched code loaded from cache.');
+                const cachedPatch = patchCache.get(contentHash);
+                if (cachedPatch.patched_code) {
+                    patchedCodePre.innerHTML = formatCodeWithLineNumbers(cachedPatch.patched_code);
+                    toggleSectionVisibility(patchedCodeDisplay, true);
+                }
+                if (cachedPatch.patch_logs) {
+                    patchLogPre.textContent = cachedPatch.patch_logs;
+                    toggleSectionVisibility(patchLogDetails, true);
+                }
+                toggleLoadingSpinner(loadingPatch, false);
+                patchButton.disabled = false;
+                return;
+            }
+
+
+            const patchResult = await callBackendApi('patch', fileNameToPatch, fileContentToPatch, 60000);
+            try {
+                if (patchResult.ok) {
+                    const patchedCode = patchResult.data.patched_code || '';
+                    const patchLogs = patchResult.data.patch_logs || '';
+
+                    // Cache the results
+                    patchCache.set(contentHash, { patched_code: patchedCode, patch_logs: patchLogs });
+
+                    if (patchedCode) {
+                        patchedCodePre.innerHTML = formatCodeWithLineNumbers(patchedCode);
+                        toggleSectionVisibility(patchedCodeDisplay, true);
+                        showPersistentMessage(patchMessage, 'success', 'Code successfully auto-patched! Review the changes below.');
+                        if (patchLogs && patchLogs.trim().length > 0) {
+                            patchLogPre.textContent = patchLogs;
+                            toggleSectionVisibility(patchLogDetails, true);
+                        }
+                    } else {
+                        showPersistentMessage(patchMessage, 'warning', 'No patched code returned. This may mean no applicable patches were found.');
+                    }
+                } else {
+                    // The API call itself didn't throw, but returned an error state
+                    showPersistentMessage(patchMessage, 'error', patchResult.error);
+                }
+            } catch (error) {
+                showPersistentMessage(patchMessage, 'error', `Auto-patching failed due to an unexpected error: ${error.message}`);
+            } finally {
+                toggleLoadingSpinner(loadingPatch, false);
+                patchButton.disabled = false;
+            }
+        });
+        
+        // --- Utility Function to copy text to clipboard ---
+        function copyToClipboard(elementId) {
+            const preElement = document.getElementById(elementId);
+            if (!preElement) {
+                console.error(`Element with ID ${elementId} not found for copying.`);
+                showTransientNotification('Copying failed: Element not found.', 'error');
+                return;
+            }
+
+            const textToCopy = preElement.querySelector('.line-numbers-container') ? 
+                                Array.from(preElement.querySelectorAll('.line-numbers-container .line')).map(span => span.textContent.replace(/\u00a0/g, ' ')).join('\n') : // Remove non-breaking spaces
+                                preElement.innerText; // Fallback for simple text
+
+            // Use modern Clipboard API with fallback for non-secure contexts (like http://) or older browsers.
+            if (navigator.clipboard && window.isSecureContext) {
+                navigator.clipboard.writeText(textToCopy).then(() => {
+                    showTransientNotification('Copied to clipboard!');
+                }).catch(err => {
+                    console.error('Failed to copy text using Clipboard API: ', err);
+                    showTransientNotification('Copying failed. Check browser permissions.', 'error');
+                });
+            } else {
+                // Fallback using the deprecated execCommand.
+                const textarea = document.createElement('textarea');
+                textarea.value = textToCopy;
+                textarea.style.position = 'fixed'; // Prevent scrolling to bottom of page
+                textarea.style.left = '-9999px';
+                document.body.appendChild(textarea);
+                textarea.focus();
+                textarea.select();
+                try {
+                    document.execCommand('copy');
+                    showTransientNotification('Copied to clipboard!');
+                } catch (err) {
+                    console.error('Fallback copy failed: ', err);
+                    showTransientNotification('Copying failed.', 'error');
+                } finally {
+                    document.body.removeChild(textarea);
+                }
+            }
+        }
+
+        // Initialize state on load
+        document.addEventListener('DOMContentLoaded', () => {
+            // Activate the first tab by default
+            document.querySelector('.tab-button[data-tab="upload-file"]').click();
+            resetUniversalUI(); // Ensure initial state is clean
+        });
+
+    </script>
+</body>
+</html>
