@@ -1,7 +1,7 @@
 from fastapi import FastAPI, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
-from analyzer import analyze_java_code
-from patcher import patch_java_code
+from .analyzer import analyze_java_code
+from .patcher import patch_java_code
 import uvicorn
 
 app = FastAPI()
