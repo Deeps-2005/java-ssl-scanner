@@ -973,7 +973,7 @@
                     const filename = zipEntry.name;
                     const fileContent = await zipEntry.async("string");
                     
-                    const analysisResult = await callBackendApi('analyze', filename, fileContent, 90000);
+                    const analysisResult = await callBackendApi('analyze', filename, fileContent, 600000);
 
                     if (analysisResult.ok) {
                         const resultsPayload = analysisResult.data.report || [];
