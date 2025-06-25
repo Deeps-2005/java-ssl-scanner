@@ -27,11 +27,11 @@ This application is a comprehensive tool designed to enhance the security of Jav
 
 ## 🛠️ Tech Stack
 
-*   **Frontend**: A responsive web interface built with **Streamlit**.
+*   **Frontend**: A responsive web interface built with **Streamlit** and also **HTML and Tailwind CSS**.
 *   **Backend**: A robust API powered by **FastAPI**.
 *   **Core Analyzer**: A static analysis engine written in **Java**, utilizing the **JavaParser** library to inspect the Abstract Syntax Tree (AST) of the source code.
-*   **Deployment**: Containerized with **Docker** and designed for easy deployment on platforms like Hugging Face Spaces.
+*   **Deployment**: Containerized with **Docker** and designed for easy deployment on platforms like Hugging Face Spaces and render.
 
 ---
 
-This project is intended for educational and illustrative purposes to demonstrate best practices in secure coding and automated code analysis.
+This project is intended to demonstrate best practices in secure coding and automated code analysis.
