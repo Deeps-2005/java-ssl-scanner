@@ -4,9 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Java Vulnerability Scanner</title>
-    <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Google Font: Inter -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
         /* Custom CSS for a modern, animated, and clean UI */
@@ -258,28 +256,24 @@
             overflow: hidden;
         }
     </style>
-    <!-- JSZip for client-side ZIP handling, deferred to not block rendering -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js" defer></script>
 </head>
 <body class="bg-slate-50">
     <div class="container">
-        <!-- Header Section -->
         <div class="text-center mb-12">
             <h1 class="text-5xl font-extrabold mb-4">🔐 SSL/HTTPS Vulnerability Scanner</h1>
             <p class="text-lg text-slate-600 max-w-2xl mx-auto">
-                Analyze your Java code for insecure usage of **X509TrustManager**,
-                **HostnameVerifier**, weak **cipher suites**, and more. Get suggestions and **auto-patch** options.
+                Analyze your Java code for insecure usage of <strong>X509TrustManager</strong>,
+                <strong>HostnameVerifier</strong>, weak <strong>cipher suites</strong>, and more. Get suggestions and <strong>auto-patch</strong> options.
             </p>
         </div>
 
-        <!-- Tab Navigation -->
         <div class="tabs">
             <button class="tab-button active" data-tab="upload-file">📤 Upload .java File</button>
             <button class="tab-button" data-tab="paste-code">📝 Paste Java Code</button>
             <button class="tab-button" data-tab="upload-zip">🗂️ Upload ZIP Archive</button>
         </div>
 
-        <!-- Tab Content: Upload .java File -->
         <div id="upload-file-tab-content" class="tab-content active">
             <h2 class="text-3xl font-bold mb-6 text-slate-700">📂 Upload a Single Java File</h2>
             <div class="file-upload-container mb-10 text-center relative" id="single-file-drop-area">
@@ -299,7 +293,6 @@
             </div>
         </div>
 
-        <!-- Tab Content: Paste Java Code -->
         <div id="paste-code-tab-content" class="tab-content">
             <h2 class="text-3xl font-bold mb-6 text-slate-700">✍️ Paste Java Code</h2>
             <textarea id="pasted-code-textarea" class="w-full p-4 border border-slate-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-200" rows="15" placeholder="public class MyClass {&#10;    // ... your Java code ...&#10;}"></textarea>
@@ -310,7 +303,6 @@
             </div>
         </div>
 
-        <!-- Tab Content: Upload ZIP Archive -->
         <div id="upload-zip-tab-content" class="tab-content">
             <h2 class="text-3xl font-bold mb-6 text-slate-700">🗂️ Upload ZIP Archive</h2>
             <div class="file-upload-container mb-10 text-center relative" id="zip-file-drop-area">
@@ -328,16 +320,13 @@
                     Process ZIP Archive
                 </button>
             </div>
-            <!-- Dynamic content for ZIP file analysis results will be injected here -->
             <div id="zip-results-container" class="mt-8"></div>
         </div>
 
 
-        <!-- Universal Loading & Message areas -->
         <div id="loading-analysis" class="loading-spinner"></div>
         <div id="analysis-message" class="message-box mt-8"></div>
 
-        <!-- Universal Analysis Results Section -->
         <div id="analysis-results" class="revealable mt-12 hidden-visually">
             <h2 class="text-3xl font-bold mb-6 text-slate-700">Analysis Results</h2>
             <div class="table-container">
@@ -352,8 +341,7 @@
                         </tr>
                     </thead>
                     <tbody id="results-table-body" class="bg-white divide-y divide-slate-200">
-                        <!-- Results will be injected here by JavaScript -->
-                    </tbody>
+                        </tbody>
                 </table>
             </div>
             <div id="no-vulnerabilities-message" class="message-box success mt-6 border-green-300 bg-green-50 text-green-800 hidden">
@@ -361,14 +349,12 @@
             </div>
         </div>
 
-        <!-- Universal Auto-Patch Section -->
         <div id="auto-patch-section" class="revealable mt-16 text-center hidden-visually">
             <h2 class="text-3xl font-bold mb-5 text-slate-700">Auto-Patch Code</h2>
             <button id="patch-button" class="button bg-emerald-600 text-white hover:bg-emerald-700">
                 Generate Patched Code
             </button>
 
-            <!-- Loading & Message areas for Patching -->
             <div id="loading-patch" class="loading-spinner"></div>
             <div id="patch-message" class="message-box mt-6"></div>
 
@@ -379,7 +365,6 @@
                 </div>
                 <pre id="patched-code-pre" class="mt-2 line-numbers-container"></pre>
                 
-                <!-- PATCH LOG DETAILS -->
                 <div id="patch-log-details" class="revealable mt-8 hidden-visually">
                     <h4 class="font-semibold text-xl mb-3 text-sky-800">Patch Log Details:</h4>
                     <pre id="patch-log-pre" class="bg-sky-50 text-sky-900 border border-sky-200"></pre>
@@ -389,7 +374,6 @@
         </div>
     </div>
 
-    <!-- Transient Notification for copy success -->
     <div id="transient-notification"></div>
 
     <script>
@@ -435,41 +419,46 @@
         let currentProcessedCodeString = null; // Stores string for pasted code
         let currentProcessedZipFile = null; // Stores File object for ZIP
 
-        // Cache for analysis and patch results to prevent redundant API calls
-        const analysisCache = new Map(); // Key: file hash, Value: { analysis_items, complete_sanitized_code_overall }
-        const patchCache = new Map(); // Key: file hash, Value: { patched_code, patch_logs }
+        // Caches for analysis and patch results to prevent redundant API calls
+        const analysisCache = new Map(); // Key: content hash, Value: { analysis_items, complete_sanitized_code_overall } or { zip_file_results }
+        const patchCache = new Map(); // Key: content hash, Value: { patched_code, patch_logs }
+
+        // Cache for ZIP file contents (stores Blob objects) and the ZIP file's hash
+        const zipFileCache = new Map();
+        let zipFileContentHash = null;
 
         // --- Utility Functions ---
 
-        // Calculates MD5 hash of a File object's content
+        // Calculates a SHA-256 hash of a buffer and returns a hex string.
+        async function digestToHex(buffer) {
+            const hashBuffer = await crypto.subtle.digest('SHA-256', buffer);
+            const hashArray = Array.from(new Uint8Array(hashBuffer));
+            return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+        }
+
+        // Calculates SHA-256 hash of a File object's content
         async function calculateFileHash(file) {
             return new Promise((resolve, reject) => {
                 const reader = new FileReader();
-                reader.onload = function(event) {
-                    const arrayBuffer = event.target.result;
-                    const byteArray = new Uint8Array(arrayBuffer);
-                    let hash = 0;
-                    // Simple hash for demonstration; for strong hash, use crypto.subtle.digest
-                    for (let i = 0; i < byteArray.length; i++) {
-                        hash = (hash << 5) - hash + byteArray[i];
-                        hash |= 0; // Convert to 32bit integer
+                reader.onload = async function(event) {
+                    try {
+                        const arrayBuffer = event.target.result;
+                        const hashHex = await digestToHex(arrayBuffer);
+                        resolve(hashHex);
+                    } catch (e) {
+                        reject(e);
                     }
-                    resolve(hash.toString());
                 };
                 reader.onerror = reject;
                 reader.readAsArrayBuffer(file);
             });
         }
 
-        // Calculates MD5 hash of a string
-        function calculateStringHash(str) {
-            let hash = 0;
-            for (let i = 0; i < str.length; i++) {
-                const char = str.charCodeAt(i);
-                hash = ((hash << 5) - hash) + char;
-                hash |= 0; // Convert to 32bit integer
-            }
-            return hash.toString();
+        // Calculates SHA-256 hash of a string
+        async function calculateStringHash(str) {
+            const encoder = new TextEncoder();
+            const data = encoder.encode(str);
+            return await digestToHex(data);
         }
 
         // Shows a persistent message (e.g., for errors or success)
@@ -488,6 +477,13 @@
         // Hides a persistent message
         function hidePersistentMessage(element) {
             element.classList.remove('show');
+        }
+        
+        // Helper to escape HTML to prevent XSS
+        function escapeHTML(str) {
+            const p = document.createElement('p');
+            p.textContent = str;
+            return p.innerHTML;
         }
         
         // Shows a short-lived notification (e.g., "Copied!")
@@ -575,7 +571,7 @@
 
         // --- Core API Call Function ---
         async function callBackendApi(endpoint, fileName, fileContent, timeout = 30000) {
-            const api_url = `/${endpoint}`; // Use relative path for Docker compatibility
+            const api_url = `http://127.0.0.1:8000/${endpoint}`;
             const formData = new FormData();
             // fileContent can be Blob (for File) or string (for pasted code)
             const blob = fileContent instanceof File ? fileContent : new Blob([fileContent], { type: 'text/plain' });
@@ -640,15 +636,14 @@
                 validIssues.forEach((item, index) => {
                     const row = targetTableBody.insertRow();
                     row.className = 'transition-opacity duration-500 opacity-0';
-                    const issueSummary = item.issue ? item.issue.split(':', 1)[0].trim() : 'N/A';
-                    const fullIssueDetails = item.issue || '-';
-                    const suggestionDetails = item.suggestion || 'N/A';
+                    const fullIssueDetails = escapeHTML(item.issue || '-');
+                    const suggestionDetails = escapeHTML(item.suggestion || 'N/A');
 
                     row.innerHTML = `
                         <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900">${item.line || '-'}</td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm">${getSeverityBadge(item.severity)}</td>
-                        <td class="px-6 py-4 text-sm text-slate-600 max-w-xs overflow-hidden text-ellipsis">${fullIssueDetails}</td>
-                        <td class="px-6 py-4 text-sm text-slate-600 max-w-xs overflow-hidden text-ellipsis">${suggestionDetails}</td>
+                        <td class="px-6 py-4 text-sm text-slate-600 max-w-xs break-words">${fullIssueDetails}</td>
+                        <td class="px-6 py-4 text-sm text-slate-600 max-w-xs break-words">${suggestionDetails}</td>
                         <td class="px-6 py-4 font-mono text-xs max-w-sm">
                             ${item.sanitized_code ? `<pre class="bg-slate-100 p-2 rounded-md border border-slate-200 text-slate-700 line-numbers-container">${formatCodeWithLineNumbers(item.sanitized_code)}</pre>` : '-'}
                         </td>
@@ -767,6 +762,30 @@
                     patchedCodePre.innerHTML = formatCodeWithLineNumbers(cachedData.complete_sanitized_code_overall);
                     toggleSectionVisibility(patchedCodeDisplay, true);
                     patchButton.disabled = true;
+                } else if (patchCache.has(fileHash)) { // Check patch cache if no complete_sanitized_code_overall from analyzer
+                    const cachedPatch = patchCache.get(fileHash);
+                    patchedCodePre.innerHTML = formatCodeWithLineNumbers(cachedPatch.patched_code);
+
+                    if (Array.isArray(cachedPatch.patch_logs) && cachedPatch.patch_logs.length > 0) {
+                        let formattedLogs = '';
+                        cachedPatch.patch_logs.forEach(logEntry => {
+                            const line = logEntry.line !== undefined ? `Line ${logEntry.line}` : 'N/A Line';
+                            const message = logEntry.message || 'No message provided.';
+                            formattedLogs += `${line}: ${message}\n`;
+                        });
+                        patchLogPre.textContent = formattedLogs.trim();
+                        toggleSectionVisibility(patchLogDetails, true);
+                    } else if (typeof cachedPatch.patch_logs === 'string' && cachedPatch.patch_logs.trim()) {
+                        patchLogPre.textContent = cachedPatch.patch_logs.trim();
+                        toggleSectionVisibility(patchLogDetails, true);
+                    } else {
+                        patchLogPre.textContent = 'No specific patch logs were generated.';
+                        toggleSectionVisibility(patchLogDetails, true);
+                    }
+                    showPersistentMessage(analysisMessage, 'info', 'Cached analysis and previously patched code loaded!');
+                    // Ensure patchedCodeDisplay is shown and patchButton is disabled
+                    toggleSectionVisibility(patchedCodeDisplay, true);
+                    patchButton.disabled = true;
                 } else if (vulnerabilitiesFound) {
                     showPersistentMessage(analysisMessage, 'info', 'Cached analysis loaded. Review findings and consider auto-patching.');
                 } else {
@@ -832,7 +851,7 @@
             scanPastedCodeButton.disabled = true;
 
             currentProcessedCodeString = pastedCode;
-            const codeHash = calculateStringHash(pastedCode);
+            const codeHash = await calculateStringHash(pastedCode);
 
             if (analysisCache.has(codeHash)) {
                 const cachedData = analysisCache.get(codeHash);
@@ -841,6 +860,30 @@
                 if (cachedData.complete_sanitized_code_overall) {
                     showPersistentMessage(analysisMessage, 'info', 'Cached analysis loaded. Full auto-patched code available.');
                     patchedCodePre.innerHTML = formatCodeWithLineNumbers(cachedData.complete_sanitized_code_overall);
+                    toggleSectionVisibility(patchedCodeDisplay, true);
+                    patchButton.disabled = true;
+                } else if (patchCache.has(codeHash)) { // Check patch cache if no complete_sanitized_code_overall from analyzer
+                    const cachedPatch = patchCache.get(codeHash);
+                    patchedCodePre.innerHTML = formatCodeWithLineNumbers(cachedPatch.patched_code);
+
+                    if (Array.isArray(cachedPatch.patch_logs) && cachedPatch.patch_logs.length > 0) {
+                        let formattedLogs = '';
+                        cachedPatch.patch_logs.forEach(logEntry => {
+                            const line = logEntry.line !== undefined ? `Line ${logEntry.line}` : 'N/A Line';
+                            const message = logEntry.message || 'No message provided.';
+                            formattedLogs += `${line}: ${message}\n`;
+                        });
+                        patchLogPre.textContent = formattedLogs.trim();
+                        toggleSectionVisibility(patchLogDetails, true);
+                    } else if (typeof cachedPatch.patch_logs === 'string' && cachedPatch.patch_logs.trim()) {
+                        patchLogPre.textContent = cachedPatch.patch_logs.trim();
+                        toggleSectionVisibility(patchLogDetails, true);
+                    } else {
+                        patchLogPre.textContent = 'No specific patch logs were generated.';
+                        toggleSectionVisibility(patchLogDetails, true);
+                    }
+                    showPersistentMessage(analysisMessage, 'info', 'Cached analysis and previously patched code loaded!');
+                    // Ensure patchedCodeDisplay is shown and patchButton is disabled
                     toggleSectionVisibility(patchedCodeDisplay, true);
                     patchButton.disabled = true;
                 } else if (vulnerabilitiesFound) {
@@ -868,9 +911,9 @@
                         tempAnalysisItems.push(item);
                     }
                 });
-
-                const analysisItemsToCache = tempAnalysisItems.length > 0 ? tempAnalysisItems : [{"issue": "No vulnerabilities found by analyzer.", "severity": "INFO"}];
                 
+                const analysisItemsToCache = tempAnalysisItems.length > 0 ? tempAnalysisItems : [{"issue": "No vulnerabilities found by analyzer.", "severity": "INFO"}];
+
                 // Cache the results
                 analysisCache.set(codeHash, {
                     analysis_items: analysisItemsToCache,
@@ -882,7 +925,7 @@
                     showPersistentMessage(analysisMessage, 'success', 'Analysis complete. Full auto-patched code available.');
                     patchedCodePre.innerHTML = formatCodeWithLineNumbers(completeSanitizedCodeOverall);
                     toggleSectionVisibility(patchedCodeDisplay, true);
-                    patchButton.disabled = true;
+                    patchButton.disabled = true; // No separate patch button if full code is already returned
                 } else if (vulnerabilitiesFound) {
                     showPersistentMessage(analysisMessage, 'success', 'Analysis complete. Review findings and consider auto-patching.');
                 } else {
@@ -895,14 +938,84 @@
             scanPastedCodeButton.disabled = false;
         });
 
-        // --- Logic for Upload ZIP Archive Tab ---
+        // --- Logic for Auto-Patch Button (Universal) ---
+        patchButton.addEventListener('click', async () => {
+            let fileName;
+            let fileContent;
+            let currentHash;
+
+            if (currentProcessedFile) {
+                fileName = currentProcessedFile.name;
+                fileContent = currentProcessedFile;
+                currentHash = await calculateFileHash(currentProcessedFile);
+            } else if (currentProcessedCodeString) {
+                fileName = 'pasted_code.java';
+                fileContent = currentProcessedCodeString;
+                currentHash = await calculateStringHash(currentProcessedCodeString);
+            } else {
+                showPersistentMessage(patchMessage, 'error', 'No Java file or code selected for patching.');
+                return;
+            }
+
+            // Don't reset the entire UI. Just reset the patch-specific parts
+            // to keep the analysis results visible for context.
+            hidePersistentMessage(patchMessage);
+            toggleSectionVisibility(patchedCodeDisplay, false);
+            toggleSectionVisibility(patchLogDetails, false);
+            patchedCodePre.innerHTML = '';
+            patchLogPre.textContent = '';
+
+            toggleLoadingSpinner(loadingPatch, true);
+            patchButton.disabled = true; // Disable during patch operation
+
+            const patchResult = await callBackendApi('patch', fileName, fileContent);
+
+            toggleLoadingSpinner(loadingPatch, false);
+
+            if (patchResult.ok) {
+                const { patched_code, patch_logs } = patchResult.data;
+                patchedCodePre.innerHTML = formatCodeWithLineNumbers(patched_code);
+                toggleSectionVisibility(patchedCodeDisplay, true);
+
+                // Patch logs handling
+                if (Array.isArray(patch_logs) && patch_logs.length > 0) {
+                    let formattedLogs = '';
+                    patch_logs.forEach(logEntry => {
+                        const line = logEntry.line !== undefined ? `Line ${logEntry.line}` : 'N/A Line';
+                        const message = logEntry.message || 'No message provided.';
+                        formattedLogs += `${line}: ${message}\n`;
+                    });
+                    patchLogPre.textContent = formattedLogs.trim();
+                    toggleSectionVisibility(patchLogDetails, true);
+                } else if (typeof patch_logs === 'string' && patch_logs.trim()) {
+                    // Fallback for unexpected string format, just in case
+                    patchLogPre.textContent = patch_logs.trim();
+                    toggleSectionVisibility(patchLogDetails, true);
+                }
+                else {
+                    patchLogPre.textContent = 'No specific patch logs were generated.';
+                    toggleSectionVisibility(patchLogDetails, true);
+                }
+
+                // Cache the patch result
+                patchCache.set(currentHash, { patched_code, patch_logs });
+
+                showPersistentMessage(patchMessage, 'success', 'Code successfully patched!');
+                patchButton.disabled = true; // Keep disabled on success
+            } else {
+                showPersistentMessage(patchMessage, 'error', patchResult.error);
+                patchButton.disabled = false; // Re-enable on failure to allow retry
+            }
+        });
+
+        // --- Logic for ZIP File Upload Tab ---
         function handleZipFileSelect(file) {
             if (file && file.name.endsWith('.zip')) {
                 currentProcessedZipFile = file;
                 zipFileNameSpan.textContent = currentProcessedZipFile.name;
                 zipFileNameSpan.classList.add('font-semibold', 'text-sky-700');
                 processZipButton.disabled = false;
-                resetUniversalUI();
+                resetUniversalUI(); // Reset universal UI when a new ZIP is selected
                 zipResultsContainer.innerHTML = ''; // Clear previous ZIP results
             } else {
                 showTransientNotification('Please select a .zip file.', 'error');
@@ -910,13 +1023,12 @@
                 zipFileNameSpan.textContent = 'No ZIP file chosen';
                 zipFileNameSpan.classList.remove('font-semibold', 'text-sky-700');
                 processZipButton.disabled = true;
-                resetUniversalUI();
-                zipResultsContainer.innerHTML = ''; // Clear previous ZIP results
+                zipResultsContainer.innerHTML = '';
             }
         }
 
         zipFileInput.addEventListener('change', (event) => handleZipFileSelect(event.target.files[0]));
-
+        
         // Drag and Drop listeners for ZIP file
         ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
             zipFileDropArea.addEventListener(eventName, e => { e.preventDefault(); e.stopPropagation(); });
@@ -929,6 +1041,198 @@
         });
         zipFileDropArea.addEventListener('drop', (event) => { handleZipFileSelect(event.dataTransfer.files[0]); });
 
+        // Helper to display results for individual files within a ZIP
+        async function displayZipFileResults(fileName, analysisItems, patchedCode = null, patchLogs = null) {
+            let fileContainer = document.getElementById(`zip-file-container-${fileName.replace(/\./g, '-')}`);
+            let isNew = false;
+            if (!fileContainer) {
+                isNew = true;
+                fileContainer = document.createElement('div');
+                fileContainer.id = `zip-file-container-${fileName.replace(/\./g, '-')}`;
+                fileContainer.className = 'bg-white p-6 rounded-xl shadow-lg mb-8 revealable';
+                fileContainer.innerHTML = `
+                    <h3 class="text-xl font-bold text-slate-800 mb-4">File: <span class="font-mono">${fileName}</span></h3>
+                    <div id="zip-file-analysis-message-${fileName.replace(/\./g, '-')}" class="message-box mt-4"></div>
+                    <div id="zip-file-table-container-${fileName.replace(/\./g, '-')}" class="table-container mt-4 hidden">
+                        <table class="min-w-full">
+                            <thead>
+                                <tr>
+                                    <th class="px-6 py-4">Line</th>
+                                    <th class="px-6 py-4">Severity</th>
+                                    <th class="px-6 py-4">Issue</th>
+                                    <th class="px-6 py-4">Suggestion</th>
+                                    <th class="px-6 py-4">Code Snippet</th>
+                                </tr>
+                            </thead>
+                            <tbody id="zip-file-results-table-body-${fileName.replace(/\./g, '-')}" class="bg-white divide-y divide-slate-200">
+                                </tbody>
+                        </table>
+                    </div>
+                    <div id="zip-file-no-vulnerabilities-message-${fileName.replace(/\./g, '-')}" class="message-box success mt-6 border-green-300 bg-green-50 text-green-800 hidden">
+                        ✅ No SSL/HTTPS vulnerabilities found in ${fileName}.
+                    </div>
+                    <div class="mt-6 text-center">
+                        <button id="zip-patch-button-${fileName.replace(/\./g, '-')}" class="button bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed">
+                            Patch This File
+                        </button>
+                    </div>
+                    <div id="zip-loading-patch-${fileName.replace(/\./g, '-')}" class="loading-spinner"></div>
+                    <div id="zip-patch-message-${fileName.replace(/\./g, '-')}" class="message-box mt-4"></div>
+                    <div id="zip-patched-code-display-${fileName.replace(/\./g, '-')}" class="revealable mt-8 text-left hidden-visually">
+                        <div class="flex justify-between items-center mb-4">
+                            <h4 class="text-xl font-bold text-slate-600">Patched Code for ${fileName}:</h4>
+                            <button class="button text-sm py-2 px-4 bg-slate-700 text-white hover:bg-slate-800" onclick="copyToClipboard('zip-patched-code-pre-${fileName.replace(/\./g, '-')}')">Copy Code</button>
+                        </div>
+                        <pre id="zip-patched-code-pre-${fileName.replace(/\./g, '-')}" class="mt-2 line-numbers-container"></pre>
+                        
+                        <div id="zip-patch-log-details-${fileName.replace(/\./g, '-')}" class="revealable mt-8 hidden-visually">
+                            <h5 class="font-semibold text-lg mb-3 text-sky-800">Patch Log Details for ${fileName}:</h5>
+                            <pre id="zip-patch-log-pre-${fileName.replace(/\./g, '-')}" class="bg-sky-50 text-sky-900 border border-sky-200"></pre>
+                            <div class="text-sm mt-3 text-sky-700">The patch log shows all changes (line numbers and descriptions) applied by the Auto-Patcher for this file.</div>
+                        </div>
+                    </div>
+                `;
+                zipResultsContainer.appendChild(fileContainer);
+                setTimeout(() => fileContainer.classList.add('show'), 50); // Animate in
+            }
+
+            const fileAnalysisMessage = document.getElementById(`zip-file-analysis-message-${fileName.replace(/\./g, '-')}`);
+            const fileResultsTableBody = document.getElementById(`zip-file-results-table-body-${fileName.replace(/\./g, '-')}`);
+            const fileNoVulnerabilitiesMessage = document.getElementById(`zip-file-no-vulnerabilities-message-${fileName.replace(/\./g, '-')}`);
+            const zipFileTableContainer = document.getElementById(`zip-file-table-container-${fileName.replace(/\./g, '-')}`);
+            const zipPatchButton = document.getElementById(`zip-patch-button-${fileName.replace(/\./g, '-')}`);
+            const zipPatchedCodeDisplay = document.getElementById(`zip-patched-code-display-${fileName.replace(/\./g, '-')}`);
+            const zipPatchedCodePre = document.getElementById(`zip-patched-code-pre-${fileName.replace(/\./g, '-')}`);
+            const zipPatchLogDetails = document.getElementById(`zip-patch-log-details-${fileName.replace(/\./g, '-')}`);
+            const zipPatchLogPre = document.getElementById(`zip-patch-log-pre-${fileName.replace(/\./g, '-')}`);
+
+            fileResultsTableBody.innerHTML = ''; // Clear existing table rows
+            fileNoVulnerabilitiesMessage.classList.add('hidden'); // Hide "no vulns" message by default
+            hidePersistentMessage(fileAnalysisMessage); // Hide any previous messages
+
+            // Check for specific "No vulnerabilities found" or error messages
+            if (analysisItems.length === 1 && analysisItems[0].severity === "INFO" && 
+                analysisItems[0].issue === "No vulnerabilities found by analyzer.") {
+                fileNoVulnerabilitiesMessage.classList.remove('hidden');
+                fileNoVulnerabilitiesMessage.classList.add('show');
+                zipPatchButton.disabled = true;
+                zipFileTableContainer.classList.add('hidden'); // Hide table
+            } else if (analysisItems.length === 1 && analysisItems[0].severity === "ERROR") {
+                showPersistentMessage(fileAnalysisMessage, 'error', `**❗ Analysis Error for ${fileName}**: ${analysisItems[0].issue}`);
+                zipPatchButton.disabled = true;
+                zipFileTableContainer.classList.add('hidden'); // Hide table
+            } else {
+                // Filter out specific info/error messages for display in table
+                const validIssues = analysisItems.filter(item => 
+                    item.severity !== "ERROR" && 
+                    !(item.severity === "INFO" && item.issue === "No vulnerabilities found by analyzer.")
+                );
+
+                if (validIssues.length > 0) {
+                    zipFileTableContainer.classList.remove('hidden'); // Show table
+                    validIssues.forEach((item, index) => {
+                        const row = fileResultsTableBody.insertRow();
+                        row.className = 'transition-opacity duration-500 opacity-0';
+                        const fullIssueDetails = escapeHTML(item.issue || '-');
+                        const suggestionDetails = escapeHTML(item.suggestion || 'N/A');
+
+                        row.innerHTML = `
+                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900">${item.line || '-'}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm">${getSeverityBadge(item.severity)}</td>
+                            <td class="px-6 py-4 text-sm text-slate-600 max-w-xs break-words">${fullIssueDetails}</td>
+                            <td class="px-6 py-4 text-sm text-slate-600 max-w-xs break-words">${suggestionDetails}</td>
+                            <td class="px-6 py-4 font-mono text-xs max-w-sm">
+                                ${item.sanitized_code ? `<pre class="bg-slate-100 p-2 rounded-md border border-slate-200 text-slate-700 line-numbers-container">${formatCodeWithLineNumbers(item.sanitized_code)}</pre>` : '-'}
+                            </td>
+                        `;
+                        setTimeout(() => row.style.opacity = 1, 100 + (index * 50));
+                    });
+                    zipPatchButton.disabled = false; // Enable patch button if vulnerabilities found
+                } else {
+                    fileNoVulnerabilitiesMessage.classList.remove('hidden');
+                    fileNoVulnerabilitiesMessage.classList.add('show');
+                    zipPatchButton.disabled = true;
+                    zipFileTableContainer.classList.add('hidden'); // Hide table
+                }
+            }
+
+            // Display patched code if available
+            if (patchedCode) {
+                zipPatchedCodePre.innerHTML = formatCodeWithLineNumbers(patchedCode);
+                toggleSectionVisibility(zipPatchedCodeDisplay, true);
+                zipPatchButton.disabled = true; // Disable if already patched and shown
+            }
+
+            // Display patch logs if available
+            if (patchLogs) {
+                if (Array.isArray(patchLogs) && patchLogs.length > 0) {
+                    let formattedLogs = '';
+                    patchLogs.forEach(logEntry => {
+                        const line = logEntry.line !== undefined ? `Line ${logEntry.line}` : 'N/A Line';
+                        const message = logEntry.message || 'No message provided.';
+                        formattedLogs += `${line}: ${message}\n`;
+                    });
+                    zipPatchLogPre.textContent = formattedLogs.trim();
+                    toggleSectionVisibility(zipPatchLogDetails, true);
+                } else if (typeof patchLogs === 'string' && patchLogs.trim()) {
+                    zipPatchLogPre.textContent = patchLogs.trim();
+                    toggleSectionVisibility(zipPatchLogDetails, true);
+                }
+                else {
+                    zipPatchLogPre.textContent = 'No specific patch logs were generated.';
+                    toggleSectionVisibility(zipPatchLogDetails, true);
+                }
+            }
+
+            // Add event listener for the individual patch button for this file, ONLY ONCE on creation.
+            if (isNew) {
+                zipPatchButton.addEventListener('click', async () => {
+                    const fileEntry = zipFileCache.get(fileName);
+                    if (!fileEntry) {
+                        showPersistentMessage(document.getElementById(`zip-patch-message-${fileName.replace(/\./g, '-')}`), 'error', `File ${fileName} not found in cache for patching.`);
+                        return;
+                    }
+
+                    const fileCode = await fileEntry.text();
+
+                    const zipLoadingPatch = document.getElementById(`zip-loading-patch-${fileName.replace(/\./g, '-')}`);
+                    const zipPatchMessage = document.getElementById(`zip-patch-message-${fileName.replace(/\./g, '-')}`);
+
+                    toggleLoadingSpinner(zipLoadingPatch, true);
+                    zipPatchButton.disabled = true;
+                    hidePersistentMessage(zipPatchMessage);
+                    toggleSectionVisibility(zipPatchedCodeDisplay, false);
+                    toggleSectionVisibility(zipPatchLogDetails, false);
+                    zipPatchedCodePre.innerHTML = '';
+                    zipPatchLogPre.textContent = '';
+
+                    const patchResult = await callBackendApi('patch', fileName, fileCode);
+
+                    toggleLoadingSpinner(zipLoadingPatch, false);
+
+                    if (patchResult.ok) {
+                        const { patched_code, patch_logs } = patchResult.data;
+                        // Update cache for this specific file within the zip analysis cache
+                        const currentAnalysisData = analysisCache.get(zipFileContentHash);
+                        if (currentAnalysisData && currentAnalysisData.zip_file_results && currentAnalysisData.zip_file_results[fileName]) {
+                            currentAnalysisData.zip_file_results[fileName].patched_code = patched_code;
+                            currentAnalysisData.zip_file_results[fileName].patch_logs = patch_logs;
+                            analysisCache.set(zipFileContentHash, currentAnalysisData); // Update the main cache
+                        }
+                        
+                        // Re-call this function to display the new patch results
+                        displayZipFileResults(fileName, analysisItems, patched_code, patch_logs);
+
+                        showPersistentMessage(zipPatchMessage, 'success', `File '${fileName}' successfully patched!`);
+                        zipPatchButton.disabled = true; // Keep disabled after successful patch
+                    } else {
+                        showPersistentMessage(zipPatchMessage, 'error', patchResult.error);
+                        zipPatchButton.disabled = false; // Re-enable on error for retry
+                    }
+                });
+            }
+        }
+
         processZipButton.addEventListener('click', async () => {
             if (!currentProcessedZipFile) {
                 showPersistentMessage(analysisMessage, 'error', 'Please upload a ZIP file to process.');
@@ -936,381 +1240,113 @@
             }
 
             resetUniversalUI();
-            zipResultsContainer.innerHTML = '';
+            zipResultsContainer.innerHTML = ''; // Clear previous ZIP results
             toggleLoadingSpinner(loadingAnalysis, true);
             processZipButton.disabled = true;
-            showPersistentMessage(analysisMessage, 'info', 'Processing ZIP file. This may take a moment...');
 
-            const zipFileHash = await calculateFileHash(currentProcessedZipFile);
-            const cachedZipResults = analysisCache.get(zipFileHash);
+            zipFileContentHash = await calculateFileHash(currentProcessedZipFile);
 
-            if (cachedZipResults) {
-                showPersistentMessage(analysisMessage, 'info', 'ZIP analysis results loaded from cache.');
-                await displayZipFileResults(cachedZipResults);
-                toggleLoadingSpinner(loadingAnalysis, false);
-                processZipButton.disabled = false;
-                return;
-            }
-
-            try {
-                if (typeof JSZip === 'undefined') {
-                    throw new Error("JSZip library is not loaded. Cannot process ZIP file.");
-                }
-                const zip = await JSZip.loadAsync(currentProcessedZipFile);
-                const javaFiles = Object.values(zip.files).filter(file => file.name.endsWith('.java') && !file.dir);
-
-                if (javaFiles.length === 0) {
-                    showPersistentMessage(analysisMessage, 'warning', 'No .java files found in the uploaded ZIP archive.');
-                    toggleLoadingSpinner(loadingAnalysis, false);
-                    processZipButton.disabled = false;
-                    return;
-                }
+            // Check analysis cache for the entire ZIP file hash
+            if (analysisCache.has(zipFileContentHash)) {
+                const cachedZipData = analysisCache.get(zipFileContentHash);
+                showPersistentMessage(analysisMessage, 'info', 'Cached ZIP analysis loaded!');
                 
-                showPersistentMessage(analysisMessage, 'info', `Found ${javaFiles.length} Java file(s). Starting analysis...`);
-
-                const zipAnalysisData = {};
-                const analysisPromises = javaFiles.map(async (zipEntry) => {
-                    const filename = zipEntry.name;
-                    const fileContent = await zipEntry.async("string");
-                    
-                    const analysisResult = await callBackendApi('analyze', filename, fileContent, 600000);
-
-                    if (analysisResult.ok) {
-                        const resultsPayload = analysisResult.data.report || [];
-                        const tempAnalysisItems = [];
-                        let completeSanitizedCodeOverall = null;
-
-                        resultsPayload.forEach(item => {
-                            if ("complete_sanitized_code" in item) {
-                                completeSanitizedCodeOverall = item.complete_sanitized_code;
-                            } else {
-                                tempAnalysisItems.push(item);
-                            }
-                        });
-                        
-                        const analysisItemsToStore = tempAnalysisItems.length > 0 ? tempAnalysisItems : [{"issue": "No vulnerabilities found by analyzer.", "severity": "INFO"}];
-                        
-                        zipAnalysisData[filename] = {
-                            analysis_items: analysisItemsToStore,
-                            complete_sanitized_code_overall: completeSanitizedCodeOverall
-                        };
-                    } else {
-                        zipAnalysisData[filename] = {
-                            analysis_items: [{ "issue": `Analysis Failed: ${analysisResult.error}`, "severity": "ERROR" }],
-                            complete_sanitized_code_overall: null
-                        };
-                    }
-                });
-
-                await Promise.all(analysisPromises);
-
-                analysisCache.set(zipFileHash, zipAnalysisData);
-                await displayZipFileResults(zipAnalysisData);
-                showPersistentMessage(analysisMessage, 'success', 'ZIP archive processed successfully. Review results below.');
-
-            } catch (error) {
-                let errorMessage = `ZIP processing failed: ${error.message}.`;
-                if (error.name === 'AbortError') {
-                    errorMessage = 'ZIP processing timed out. The server took too long to respond. This can happen with large archives.';
-                } else if (error.message.includes('Failed to fetch')) {
-                    errorMessage = 'Connection failed. Is the backend server running at `http://127.0.0.1:8000`?';
+                for (const fileName in cachedZipData.zip_file_results) {
+                    const result = cachedZipData.zip_file_results[fileName];
+                    displayZipFileResults(fileName, result.analysis_items, result.patched_code, result.patch_logs);
                 }
-                showPersistentMessage(analysisMessage, 'error', errorMessage);
-            } finally {
                 toggleLoadingSpinner(loadingAnalysis, false);
                 processZipButton.disabled = false;
-            }
-        });
-
-        async function displayZipFileResults(zipAnalysisData) {
-            zipResultsContainer.innerHTML = ''; // Clear previous display
-            if (Object.keys(zipAnalysisData).length === 0) {
-                zipResultsContainer.innerHTML = '<div class="message-box warning show border-amber-300 bg-amber-50 text-amber-800">No .java files found in the ZIP archive or no analysis results returned.</div>';
                 return;
             }
 
-            // Pre-extract all file contents from the ZIP once for efficiency.
-            // This avoids re-reading and unzipping the entire archive for every patch action.
-            const fileContents = new Map();
+            const zip = new JSZip();
+            let zipFileBytes;
             try {
-                // Ensure JSZip is loaded before attempting to use it
-                if (typeof JSZip === 'undefined') {
-                    throw new Error("JSZip library is not loaded. Cannot process ZIP file contents.");
-                }
-                const zip = await JSZip.loadAsync(currentProcessedZipFile);
-                for (const filename in zipAnalysisData) {
-                    const zipFile = zip.file(filename);
-                    if (zipFile) {
-                        const content = await zipFile.async("string");
-                        fileContents.set(filename, content);
-                    }
-                }
+                zipFileBytes = await currentProcessedZipFile.arrayBuffer();
+                await zip.loadAsync(zipFileBytes);
             } catch (e) {
-                showPersistentMessage(analysisMessage, 'error', `Failed to read contents of ZIP file: ${e.message}`);
-                return; // Stop rendering if we can't read the zip
+                showPersistentMessage(analysisMessage, 'error', 'Failed to load ZIP file. It might be corrupted or not a valid ZIP archive.');
+                toggleLoadingSpinner(loadingAnalysis, false);
+                processZipButton.disabled = false;
+                return;
             }
 
-            for (const filename in zipAnalysisData) {
-                const fileData = zipAnalysisData[filename];
-                const analysisItems = fileData.analysis_items || [];
-                const completeSanitizedCode = fileData.complete_sanitized_code_overall || '';
-
-                // Create the section for each file's results
-                const fileSection = document.createElement('div');
-                fileSection.className = 'bg-white p-6 rounded-xl shadow-md mb-6';
-                fileSection.innerHTML = `
-                    <h3 class="text-2xl font-bold mb-4 text-slate-800">File: \`${filename}\`</h3>
-                    <div class="file-analysis-results">
-                        <div class="table-container mb-4">
-                            <table class="min-w-full">
-                                <thead>
-                                    <tr>
-                                        <th class="px-6 py-4">Line</th>
-                                        <th class="px-6 py-4">Severity</th>
-                                        <th class="px-6 py-4">Issue</th>
-                                        <th class="px-6 py-4">Suggestion</th>
-                                        <th class="px-6 py-4">Code Snippet</th>
-                                    </tr>
-                                </thead>
-                                <tbody class="bg-white divide-y divide-slate-200">
-                                    <!-- Analysis results for this file -->
-                                </tbody>
-                            </table>
-                        </div>
-                        <div class="no-vulnerabilities-message message-box success mt-4 border-green-300 bg-green-50 text-green-800 hidden">
-                            ✅ No SSL/HTTPS vulnerabilities found in this file.
-                        </div>
-                    </div>
-                    <div class="file-patch-section mt-6 text-center">
-                        <button class="button bg-emerald-600 text-white hover:bg-emerald-700 patch-file-button" data-filename="${filename}">
-                            Generate Patched Code for This File
-                        </button>
-                        <div class="loading-spinner hidden" id="loading-patch-${filename.replace(/[^a-zA-Z0-9]/g, '-')}"></div>
-                        <div class="file-patch-message message-box mt-4 hidden"></div>
-                        <div class="patched-file-code-display mt-8 text-left hidden">
-                            <div class="flex justify-between items-center mb-4">
-                                <h4 class="text-xl font-bold text-slate-600">Patched Java Code:</h4>
-                                <button class="button text-sm py-2 px-4 bg-slate-700 text-white hover:bg-slate-800" onclick="copyToClipboard('patched-file-code-pre-${filename.replace(/[^a-zA-Z0-9]/g, '-')}')">Copy Code</button>
-                            </div>
-                            <pre class="mt-2 line-numbers-container" id="patched-file-code-pre-${filename.replace(/[^a-zA-Z0-9]/g, '-')}" ></pre>
-                            <div class="patched-file-log-details mt-8 hidden">
-                                <h5 class="font-semibold text-lg mb-3 text-sky-800">Patch Log Details:</h5>
-                                <pre class="bg-sky-50 text-sky-900 border border-sky-200" id="patched-file-log-pre-${filename.replace(/[^a-zA-Z0-9]/g, '-')}" ></pre>
-                                <div class="text-sm mt-3 text-sky-700">The patch log shows all changes (line numbers and descriptions) applied by the Auto-Patcher.</div>
-                            </div>
-                        </div>
-                    </div>
-                    <hr class="my-8 border-t border-slate-200">
-                `;
-                zipResultsContainer.appendChild(fileSection);
-
-                const fileTableBody = fileSection.querySelector('.file-analysis-results tbody');
-                const fileNoVulnMessage = fileSection.querySelector('.no-vulnerabilities-message');
-                const filePatchButton = fileSection.querySelector(`.patch-file-button`);
-                const fileLoadingPatch = fileSection.querySelector(`#loading-patch-${filename.replace(/[^a-zA-Z0-9]/g, '-')}`);
-                const filePatchMessage = fileSection.querySelector('.file-patch-message');
-                const patchedFileCodeDisplay = fileSection.querySelector('.patched-file-code-display');
-                const patchedFileCodePre = fileSection.querySelector(`#patched-file-code-pre-${filename.replace(/[^a-zA-Z0-9]/g, '-')}`);
-                const patchedFileLogDetails = fileSection.querySelector('.patched-file-log-details');
-                const patchedFileLogPre = fileSection.querySelector(`#patched-file-log-pre-${filename.replace(/[^a-zA-Z0-9]/g, '-')}`);
-
-                const fileTableContainer = fileSection.querySelector('.table-container'); // Get reference to the table container
-
-                // Display analysis for this specific file
-                if (analysisItems.length === 1 && analysisItems[0].severity === "INFO" && analysisItems[0].issue === "No vulnerabilities found by analyzer.") {
-                    fileNoVulnMessage.classList.add('show');
-                    fileNoVulnMessage.classList.remove('hidden');
-                    filePatchButton.classList.add('hidden'); // Hide patch button if no vulnerabilities
-                    fileTableContainer.classList.add('hidden'); // Hide the table if no vulnerabilities
-                } else if (analysisItems.length === 1 && analysisItems[0].severity === "ERROR") {
-                    showPersistentMessage(filePatchMessage, 'error', `**❗ Analysis Error for ${filename}**: ${analysisItems[0].issue}`);
-                    filePatchButton.classList.add('hidden');
-                    fileTableContainer.classList.add('hidden'); // Hide the table if there's an error
-                } else {
-                    const validIssues = analysisItems.filter(item => 
-                        item.severity !== "ERROR" && 
-                        !(item.severity === "INFO" && item.issue === "No vulnerabilities found by analyzer.")
-                    );
-                    if (validIssues.length > 0) {
-                        fileTableContainer.classList.remove('hidden'); // Ensure table is visible if vulnerabilities found
-                        validIssues.forEach(item => {
-                            const row = fileTableBody.insertRow();
-                            row.innerHTML = `
-                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900">${item.line || '-'}</td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm">${getSeverityBadge(item.severity)}</td>
-                                <td class="px-6 py-4 text-sm text-slate-600 max-w-xs overflow-hidden text-ellipsis">${item.issue || 'N/A'}</td>
-                                <td class="px-6 py-4 text-sm text-slate-600 max-w-xs overflow-hidden text-ellipsis">${item.suggestion || 'N/A'}</td>
-                                <td class="px-6 py-4 font-mono text-xs max-w-sm">
-                                    ${item.sanitized_code ? `<pre class="bg-slate-100 p-2 rounded-md border border-slate-200 text-slate-700 line-numbers-container">${formatCodeWithLineNumbers(item.sanitized_code)}</pre>` : '-'}
-                                </td>
-                            `;
-                        });
-                        filePatchButton.classList.remove('hidden'); // Show patch button if vulnerabilities
-                    } else {
-                        // This branch handles cases where validIssues is empty after filtering, but it's not the specific INFO message.
-                        // It should also hide the table and show the no-vuln message.
-                        fileNoVulnMessage.classList.add('show');
-                        fileNoVulnMessage.classList.remove('hidden');
-                        filePatchButton.classList.add('hidden');
-                        fileTableContainer.classList.add('hidden'); // Hide the table if no valid issues
-                    }
+            const javaFiles = [];
+            zip.forEach((relativePath, zipEntry) => {
+                if (!zipEntry.dir && relativePath.toLowerCase().endsWith('.java')) {
+                    javaFiles.push({ name: relativePath, entry: zipEntry });
                 }
+            });
 
-                // If complete sanitized code from analyzer is present, display it
-                if (completeSanitizedCode) {
-                    patchedFileCodePre.innerHTML = formatCodeWithLineNumbers(completeSanitizedCode);
-                    patchedFileCodeDisplay.classList.remove('hidden');
-                    showPersistentMessage(filePatchMessage, 'success', 'Full auto-patched code already provided by analyzer.');
-                    filePatchButton.classList.add('hidden'); // Hide individual patch button if already fully patched
-                    fileTableContainer.classList.add('hidden'); // Hide the table if full code is provided
-                    fileNoVulnMessage.classList.add('hidden'); // Hide no vuln message if full code is provided
-                }
+            if (javaFiles.length === 0) {
+                showPersistentMessage(analysisMessage, 'warning', 'No .java files found in the uploaded ZIP archive.');
+                toggleLoadingSpinner(loadingAnalysis, false);
+                processZipButton.disabled = false;
+                return;
+            }
 
-                // Attach event listener for individual patch button
-                filePatchButton.addEventListener('click', async () => {
-                    hidePersistentMessage(filePatchMessage);
-                    patchedFileCodeDisplay.classList.add('hidden');
-                    patchedFileLogDetails.classList.add('hidden');
-                    toggleLoadingSpinner(fileLoadingPatch, true);
-                    filePatchButton.disabled = true;
+            const zipAnalysisResults = {}; // To store analysis results for each file in the ZIP
+            zipFileCache.clear(); // Clear the file cache for new ZIP
 
-                    try {
-                        const fileContent = fileContents.get(filename);
-                        if (typeof fileContent === 'undefined') { // Check for undefined, as content can be an empty string
-                            throw new Error(`Could not find pre-loaded content for ${filename}.`);
-                        }
+            for (const fileObj of javaFiles) {
+                const fileName = fileObj.name;
+                const fileBlob = await fileObj.entry.async("blob");
+                zipFileCache.set(fileName, fileBlob); // Store the Blob for later patching
 
-                        const patchResult = await callBackendApi('patch', filename, fileContent, 60000); // 60s timeout
+                showPersistentMessage(analysisMessage, 'info', `Analyzing ${fileName}...`);
+                const analysisResult = await callBackendApi('analyze', fileName, fileBlob, 60000); // Increased timeout for ZIP files
 
-                        if (patchResult.ok) {
-                            const patchedCode = patchResult.data.patched_code || '';
-                            const patchLogs = patchResult.data.patch_logs || '';
-                            if (patchedCode) {
-                                patchedFileCodePre.innerHTML = formatCodeWithLineNumbers(patchedCode);
-                                patchedFileCodeDisplay.classList.remove('hidden');
-                                showPersistentMessage(filePatchMessage, 'success', 'Code successfully auto-patched! Review the changes below.');
-                                if (patchLogs && patchLogs.trim().length > 0) {
-                                    patchedFileLogPre.textContent = patchLogs;
-                                    patchedFileLogDetails.classList.remove('hidden');
-                                }
-                            } else {
-                                showPersistentMessage(filePatchMessage, 'warning', 'No patched code returned. This may mean no applicable patches were found.');
-                            }
+                let analysisItemsForFile = [];
+                let completeSanitizedCodeForFile = null;
+
+                if (analysisResult.ok) {
+                    const resultsPayload = analysisResult.data.report || [];
+                    const tempAnalysisItems = [];
+                    resultsPayload.forEach(item => {
+                        if ("complete_sanitized_code" in item) {
+                            completeSanitizedCodeForFile = item.complete_sanitized_code;
                         } else {
-                            showPersistentMessage(filePatchMessage, 'error', patchResult.error);
+                            tempAnalysisItems.push(item);
                         }
-                    } catch (error) {
-                        showPersistentMessage(filePatchMessage, 'error', `Auto-patching failed for ${filename}: ${error.message}`);
-                    } finally {
-                        toggleLoadingSpinner(fileLoadingPatch, false);
-                        filePatchButton.disabled = false;
-                    }
-                });
-            }
-        }
-
-        // --- Universal Auto-Patch Button (for single file/pasted code) ---
-        patchButton.addEventListener('click', async () => {
-            let fileToPatch = null;
-            let fileNameToPatch = '';
-            let fileContentToPatch = '';
-
-            if (document.querySelector('.tab-button[data-tab="upload-file"]').classList.contains('active')) {
-                fileToPatch = currentProcessedFile;
-                fileNameToPatch = currentProcessedFile ? currentProcessedFile.name : '';
-                fileContentToPatch = currentProcessedFile; // Pass the File object directly
-            } else if (document.querySelector('.tab-button[data-tab="paste-code"]').classList.contains('active')) {
-                fileToPatch = true; // Indicate pasted code is active
-                fileNameToPatch = 'pasted_code.java';
-                fileContentToPatch = currentProcessedCodeString; // Pass the string content
-            } else {
-                showPersistentMessage(patchMessage, 'error', 'No single file or pasted code selected for patching.');
-                return;
-            }
-
-            if (!fileToPatch) {
-                showPersistentMessage(patchMessage, 'error', 'No content selected for patching.');
-                return;
-            }
-
-            hidePersistentMessage(patchMessage);
-            toggleSectionVisibility(patchedCodeDisplay, false);
-            toggleSectionVisibility(patchLogDetails, false);
-            toggleLoadingSpinner(loadingPatch, true);
-            patchButton.disabled = true;
-
-            let contentHash;
-            if (fileContentToPatch instanceof File) {
-                contentHash = await calculateFileHash(fileContentToPatch);
-            } else {
-                contentHash = calculateStringHash(fileContentToPatch);
-            }
-
-            if (patchCache.has(contentHash)) {
-                // Serve from cache
-                showPersistentMessage(patchMessage, 'info', 'Patched code loaded from cache.');
-                const cachedPatch = patchCache.get(contentHash);
-                if (cachedPatch.patched_code) {
-                    patchedCodePre.innerHTML = formatCodeWithLineNumbers(cachedPatch.patched_code);
-                    toggleSectionVisibility(patchedCodeDisplay, true);
-                }
-                if (cachedPatch.patch_logs) {
-                    patchLogPre.textContent = cachedPatch.patch_logs;
-                    toggleSectionVisibility(patchLogDetails, true);
-                }
-                toggleLoadingSpinner(loadingPatch, false);
-                patchButton.disabled = false;
-                return;
-            }
-
-
-            const patchResult = await callBackendApi('patch', fileNameToPatch, fileContentToPatch, 60000);
-            try {
-                if (patchResult.ok) {
-                    const patchedCode = patchResult.data.patched_code || '';
-                    const patchLogs = patchResult.data.patch_logs || '';
-
-                    // Cache the results
-                    patchCache.set(contentHash, { patched_code: patchedCode, patch_logs: patchLogs });
-
-                    if (patchedCode) {
-                        patchedCodePre.innerHTML = formatCodeWithLineNumbers(patchedCode);
-                        toggleSectionVisibility(patchedCodeDisplay, true);
-                        showPersistentMessage(patchMessage, 'success', 'Code successfully auto-patched! Review the changes below.');
-                        if (patchLogs && patchLogs.trim().length > 0) {
-                            patchLogPre.textContent = patchLogs;
-                            toggleSectionVisibility(patchLogDetails, true);
-                        }
-                    } else {
-                        showPersistentMessage(patchMessage, 'warning', 'No patched code returned. This may mean no applicable patches were found.');
-                    }
+                    });
+                    analysisItemsForFile = tempAnalysisItems.length > 0 ? tempAnalysisItems : [{"issue": "No vulnerabilities found by analyzer.", "severity": "INFO"}];
                 } else {
-                    // The API call itself didn't throw, but returned an error state
-                    showPersistentMessage(patchMessage, 'error', patchResult.error);
+                    analysisItemsForFile = [{
+                        "line": null,
+                        "issue": `Analysis failed: ${analysisResult.error}`,
+                        "suggestion": "Check the file content or backend logs.",
+                        "sanitized_code": null,
+                        "severity": "ERROR"
+                    }];
                 }
-            } catch (error) {
-                showPersistentMessage(patchMessage, 'error', `Auto-patching failed due to an unexpected error: ${error.message}`);
-            } finally {
-                toggleLoadingSpinner(loadingPatch, false);
-                patchButton.disabled = false;
+
+                zipAnalysisResults[fileName] = {
+                    analysis_items: analysisItemsForFile,
+                    patched_code: completeSanitizedCodeForFile, // Store initial patched code if returned with analysis
+                    patch_logs: null // Patch logs will be populated on individual patch action
+                };
+                displayZipFileResults(fileName, analysisItemsForFile, completeSanitizedCodeForFile, null);
             }
+
+            // Cache the entire ZIP's analysis results
+            analysisCache.set(zipFileContentHash, { zip_file_results: zipAnalysisResults });
+
+            showPersistentMessage(analysisMessage, 'success', 'ZIP analysis complete. Review individual file results below.');
+            toggleLoadingSpinner(loadingAnalysis, false);
+            processZipButton.disabled = false;
         });
-        
-        // --- Utility Function to copy text to clipboard ---
+
+
+        // --- Universal Clipboard Copy Function ---
         function copyToClipboard(elementId) {
             const preElement = document.getElementById(elementId);
-            if (!preElement) {
-                console.error(`Element with ID ${elementId} not found for copying.`);
-                showTransientNotification('Copying failed: Element not found.', 'error');
-                return;
-            }
+            if (!preElement) return;
 
-            const textToCopy = preElement.querySelector('.line-numbers-container') ? 
-                                Array.from(preElement.querySelectorAll('.line-numbers-container .line')).map(span => span.textContent.replace(/\u00a0/g, ' ')).join('\n') : // Remove non-breaking spaces
-                                preElement.innerText; // Fallback for simple text
+            // Use the textContent which includes line breaks correctly
+            const textToCopy = preElement.textContent;
 
-            // Use modern Clipboard API with fallback for non-secure contexts (like http://) or older browsers.
-            if (navigator.clipboard && window.isSecureContext) {
+            if (navigator.clipboard && navigator.clipboard.writeText) {
                 navigator.clipboard.writeText(textToCopy).then(() => {
                     showTransientNotification('Copied to clipboard!');
                 }).catch(err => {

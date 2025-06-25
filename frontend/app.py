@@ -8,7 +8,7 @@ import hashlib # For hashing ZIP file content
 # --- Page Configuration ---
 st.set_page_config(
     page_title="SSL/HTTPS Vulnerability Scanner",
-    layout="centered",
+    layout="centered", # "wide" can also be used for more space
     initial_sidebar_state="collapsed",
     menu_items={
         'Get Help': 'https://www.example.com/help',
@@ -40,7 +40,7 @@ def init_session_state():
         "complete_sanitized_code_overall": None,
         "trigger_patch_for_active_file": False,
         "patched_code_result": None,
-        "patch_logs_result": None,
+        "patch_logs_result": None, # This will now be a list of dicts
         
         # Keep track of the uploader's state to detect actual changes for uploaded file
         "last_uploaded_filename": None,
@@ -226,280 +226,202 @@ def process_and_display_single_file(filename: str, code_bytes: bytes, source_tab
             if patch_result["ok"]:
                 patch_data = patch_result["data"]
                 st.session_state.patched_code_result = patch_data.get("patched_code", "")
-                st.session_state.patch_logs_result = patch_data.get("patch_logs", "")
+                st.session_state.patch_logs_result = patch_data.get("patch_logs", []) # Ensure it's a list
                 if not st.session_state.patched_code_result and not st.session_state.patch_logs_result:
-                     st.session_state.patch_logs_result = "Patching service returned an empty response. No changes made or no applicable patches found."
+                     st.session_state.patch_logs_result = [{"message": "Patching service returned an empty response. No changes made or no applicable patches found.", "line": "N/A"}]
             else:
                 st.session_state.patched_code_result = "" # Ensure no old code is shown
-                st.session_state.patch_logs_result = f"Patching failed: {patch_result['error']}"
+                st.session_state.patch_logs_result = [{"message": f"Patching failed: {patch_result['error']}", "line": "N/A"}]
 
         # Display patched code and logs after patching is complete
         if st.session_state.patched_code_result:
             st.subheader(f"🧰 Patched Java Code Output for {filename}")
             st.code(st.session_state.patched_code_result.strip(), language="java")
+            st.success("Auto-patching completed! Review the patched code above.")
+            st.info("Remember: Automated patches may require manual review and testing.")
+        
+        # Display patch logs
         if st.session_state.patch_logs_result:
-            st.subheader(f"📝 Patch Log Details for {filename}")
-            st.text_area("Patch Log:", value=st.session_state.patch_logs_result.strip(), height=150, disabled=True, 
-                         key=f"log_patch_active_{filename.replace('.', '_')}_{source_tab_name}")
+            st.subheader(f"📝 Patch Logs for {filename}")
+            # Check if it's a list (expected) or a string (fallback from previous errors)
+            if isinstance(st.session_state.patch_logs_result, list):
+                if st.session_state.patch_logs_result:
+                    for log_entry in st.session_state.patch_logs_result:
+                        line = log_entry.get("line", "N/A")
+                        message = log_entry.get("message", "No message provided.")
+                        st.text_area(f"Line {line}", value=message, height=70, disabled=True, key=f"log_display_{filename}_{line}_{message[:20]}")
+                else:
+                    st.info("No specific patch logs were generated.")
+            else: # Fallback for unexpected string format
+                st.text_area("Raw Patch Logs (Unexpected Format):", value=str(st.session_state.patch_logs_result), height=100, disabled=True)
+        
+        # Reset trigger after display
+        st.session_state.trigger_patch_for_active_file = False
+        st.session_state.patch_logs_result = None # Clear logs after display
 
-        st.session_state.trigger_patch_for_active_file = False # Reset trigger
+# --- Streamlit Tabs for Input Method ---
+tab1, tab2, tab3 = st.tabs(["Upload .java File", "Paste Java Code", "Upload ZIP File (Multiple Files)"])
 
+# --- Tab 1: Upload .java File ---
+with tab1:
+    st.subheader("Upload a Single Java (.java) File")
+    uploaded_file_single = st.file_uploader("Choose a .java file", type=["java"], key="single_file_uploader")
 
-# --- Input Tabs ---
-tab1_obj, tab2_obj, tab3_obj = st.tabs(["📤 Upload .java File", "📝 Paste Java Code", "🗂️ Upload ZIP Archive"])
+    # Clear results if a new file is uploaded
+    if uploaded_file_single and (st.session_state.last_uploaded_filename != uploaded_file_single.name or \
+                                 st.session_state.last_uploaded_file_size != uploaded_file_single.size):
+        clear_processing_results_single_file()
+        st.session_state.uploaded_file_bytes = uploaded_file_single.read()
+        st.session_state.uploaded_filename = uploaded_file_single.name
+        st.session_state.last_uploaded_filename = uploaded_file_single.name
+        st.session_state.last_uploaded_file_size = uploaded_file_single.size
+        st.session_state.current_display_source_tab = "upload_file"
+        st.rerun() # Rerun to process the new file
 
-with tab1_obj:
-    st.subheader("📂 Upload a Single Java File")
-    uploaded_file_widget = st.file_uploader(
-        "Select your .java file",
-        type=["java"],
-        key="java_file_uploader_widget", # Unique key for the widget
-        label_visibility="collapsed"
-    )
-
-    if uploaded_file_widget is not None:
-        # Check if this uploaded file is different from the one currently active in session_state
-        # or if no file is active yet.
-        if (st.session_state.last_uploaded_filename != uploaded_file_widget.name or
-            st.session_state.last_uploaded_file_size != uploaded_file_widget.size):
-            
-            st.session_state.uploaded_file_bytes = uploaded_file_widget.read()
-            st.session_state.uploaded_filename = uploaded_file_widget.name
-            st.session_state.last_uploaded_filename = uploaded_file_widget.name # Store name
-            st.session_state.last_uploaded_file_size = uploaded_file_widget.size   # Store size
-            
-            # Set this tab as the source for display and clear other tab's results
-            st.session_state.current_display_source_tab = "upload_file"
-            clear_processing_results_single_file()
-            st.session_state.zip_file_raw_bytes = None # Clear ZIP content when switching
-            st.session_state.zip_file_content_hash = None
-            st.session_state.zip_file_name = None
-            st.session_state.zip_analysis_cache = {}
-            st.session_state.zip_patch_cache = {}
-            st.session_state.zip_patch_triggered_files = set()
-            st.rerun() # Trigger a rerun to process the new file
-    elif st.session_state.last_uploaded_filename is not None and uploaded_file_widget is None:
-        # File was cleared by the user in this widget
-        st.session_state.uploaded_file_bytes = None
-        st.session_state.uploaded_filename = None
-        st.session_state.last_uploaded_filename = None
-        st.session_state.last_uploaded_file_size = None
-        # If this was the active display source, clear it and rerun
-        if st.session_state.current_display_source_tab == "upload_file":
-            st.session_state.current_display_source_tab = None
-            clear_processing_results_single_file()
-            st.rerun()
-
-    # Display results if this tab is the current source and file bytes are available
-    if st.session_state.uploaded_file_bytes and st.session_state.current_display_source_tab == "upload_file":
+    # If the file exists and is the current active display source, process it
+    if st.session_state.current_display_source_tab == "upload_file" and \
+       st.session_state.uploaded_file_bytes is not None and \
+       st.session_state.uploaded_filename is not None:
         process_and_display_single_file(st.session_state.uploaded_filename, st.session_state.uploaded_file_bytes, "upload_file")
+    elif uploaded_file_single is None and st.session_state.current_display_source_tab == "upload_file":
+        clear_processing_results_single_file() # Clear if user removed the file
 
+# --- Tab 2: Paste Java Code ---
+with tab2:
+    st.subheader("Paste Your Java Code Here")
+    pasted_code_input = st.text_area("Paste code...", height=300, key="pasted_code_area")
+    
+    # Check if pasted code has changed and update session state
+    if pasted_code_input:
+        current_pasted_bytes = pasted_code_input.encode("utf-8")
+        if st.session_state.pasted_code_bytes != current_pasted_bytes:
+            clear_processing_results_single_file()
+            st.session_state.pasted_code_bytes = current_pasted_bytes
+            st.session_state.current_display_source_tab = "paste_code"
+            st.rerun() # Rerun to process new pasted code
+    elif not pasted_code_input and st.session_state.current_display_source_tab == "paste_code":
+        clear_processing_results_single_file() # Clear if user cleared the text area
 
-with tab2_obj:
-    st.subheader("✍️ Paste Java Code")
-    java_code_pasted_area = st.text_area(
-        "Paste your Java code snippet here:",
-        height=300,
-        key="java_code_pasted_widget", # Unique key
-        placeholder="public class MyClass {\n    // ... your Java code ...\n}"
-    )
-    if st.button("Scan Pasted Code", key="scan_pasted_code_button"):
-        if java_code_pasted_area:
-            pasted_bytes = java_code_pasted_area.encode("utf-8")
-            # Check if the pasted code is different from what's stored
-            if st.session_state.pasted_code_bytes != pasted_bytes:
-                st.session_state.pasted_code_bytes = pasted_bytes
-                # Set this tab as the source for display and clear other tab's results
-                st.session_state.current_display_source_tab = "paste_code"
-                clear_processing_results_single_file()
-                st.session_state.zip_file_raw_bytes = None # Clear ZIP content when switching
-                st.session_state.zip_file_content_hash = None
-                st.session_state.zip_file_name = None
-                st.session_state.zip_analysis_cache = {}
-                st.session_state.zip_patch_cache = {}
-                st.session_state.zip_patch_triggered_files = set()
-                st.rerun() # Rerun to process this newly active pasted code
-            elif st.session_state.current_display_source_tab != "paste_code":
-                # If same code, but switched from another tab, re-activate display
-                st.session_state.current_display_source_tab = "paste_code"
-                st.rerun() # Rerun to display existing results
-        else:
-            st.warning("Please paste some Java code into the text area.")
-            # If text area is empty and button clicked, clear state
-            if st.session_state.current_display_source_tab == "paste_code":
-                st.session_state.pasted_code_bytes = None
-                st.session_state.current_display_source_tab = None
-                clear_processing_results_single_file()
-                st.rerun() # Rerun to clear display
-
-    # Display results if this tab is the current source and pasted code bytes are available
-    if st.session_state.pasted_code_bytes and st.session_state.current_display_source_tab == "paste_code":
+    # If pasted code exists and is the current active display source, process it
+    if st.session_state.current_display_source_tab == "paste_code" and \
+       st.session_state.pasted_code_bytes is not None:
         process_and_display_single_file(st.session_state.pasted_code_filename, st.session_state.pasted_code_bytes, "paste_code")
 
 
-with tab3_obj:
-    st.subheader("🗂️ Upload ZIP Archive")
-    uploaded_zip_file = st.file_uploader(
-        "Upload a ZIP archive containing .java files",
-        type=["zip"],
-        key="zip_file_uploader_widget", # Unique key
-        label_visibility="collapsed"
-    )
+# --- Tab 3: Upload ZIP File ---
+with tab3:
+    st.subheader("Upload a ZIP File containing .java files")
+    zip_file_upload = st.file_uploader("Choose a .zip file", type=["zip"], key="zip_file_uploader")
 
-    # --- ZIP File Upload and Caching Logic ---
-    if uploaded_zip_file:
-        current_zip_bytes = uploaded_zip_file.read()
-        current_zip_hash = hashlib.md5(current_zip_bytes).hexdigest()
+    if zip_file_upload:
+        raw_bytes = zip_file_upload.read()
+        current_hash = hashlib.md5(raw_bytes).hexdigest()
 
-        # Check if a new ZIP file has been uploaded or if content changed
-        if st.session_state.zip_file_content_hash != current_zip_hash:
-            st.session_state.zip_file_raw_bytes = current_zip_bytes
-            st.session_state.zip_file_content_hash = current_zip_hash
-            st.session_state.zip_file_name = uploaded_zip_file.name
-            
-            # Clear results related to other input types
-            clear_processing_results_single_file()
-            # Clear previous ZIP results
-            st.session_state.zip_analysis_cache = {}
+        # Check if a new ZIP file is uploaded or content changed
+        if st.session_state.zip_file_content_hash != current_hash:
+            st.session_state.zip_file_raw_bytes = raw_bytes
+            st.session_state.zip_file_content_hash = current_hash
+            st.session_state.zip_file_name = zip_file_upload.name
+            st.session_state.zip_analysis_cache = {} # Clear cache for new zip
             st.session_state.zip_patch_cache = {}
             st.session_state.zip_patch_triggered_files = set()
-            
-            # Set this tab as the current display source and trigger rerun for processing
-            st.session_state.current_display_source_tab = "zip_file"
-            st.rerun() # Rerun to start processing the new ZIP
-        else:
-            # Same ZIP file, ensure this tab is active for display
-            st.session_state.current_display_source_tab = "zip_file"
-    elif st.session_state.zip_file_raw_bytes is not None and uploaded_zip_file is None:
-        # ZIP uploader was cleared by the user, clear session state related to ZIP
-        st.session_state.zip_file_raw_bytes = None
-        st.session_state.zip_file_content_hash = None
-        st.session_state.zip_file_name = None
-        st.session_state.zip_analysis_cache = {}
-        st.session_state.zip_patch_cache = {}
-        st.session_state.zip_patch_triggered_files = set()
-        if st.session_state.current_display_source_tab == "zip_file":
-            st.session_state.current_display_source_tab = None
-            st.rerun() # Rerun to clear display
+            st.session_state.current_display_source_tab = "zip_file" # Set active tab
+            st.rerun() # Rerun to process the new zip
 
-    # --- ZIP File Processing and Display Logic ---
-    # Only proceed if ZIP tab is active and we have ZIP content
-    if st.session_state.current_display_source_tab == "zip_file" and st.session_state.zip_file_raw_bytes:
-        st.markdown("---")
-        st.write(f"Processing ZIP file: **{st.session_state.zip_file_name}**")
-        
-        java_files_in_zip = []
+        st.markdown(f"**Processing ZIP**: `{st.session_state.zip_file_name}`")
+        st.info("Results for each Java file within the ZIP will be displayed below.")
+
         try:
-            with zipfile.ZipFile(io.BytesIO(st.session_state.zip_file_raw_bytes), 'r') as zip_ref:
-                java_files_in_zip = [
-                    name for name in zip_ref.namelist() 
-                    if name.endswith(".java") and not zip_ref.getinfo(name).is_dir()
-                ]
+            with zipfile.ZipFile(io.BytesIO(st.session_state.zip_file_raw_bytes), 'r') as zf:
+                java_files_in_zip = [name for name in zf.namelist() if name.lower().endswith('.java') and not name.startswith('__MACOSX/')]
+
                 if not java_files_in_zip:
                     st.warning("No .java files found in the uploaded ZIP archive.")
+                    st.session_state.zip_analysis_cache = {} # Ensure empty if no java files
+                    st.session_state.zip_patch_cache = {}
                 else:
-                    st.info(f"Found {len(java_files_in_zip)} Java file(s) in the ZIP.")
-                    
-                    # --- Analysis Pass for ZIP files ---
-                    # Only analyze files not already in cache
-                    files_to_analyze = [name for name in java_files_in_zip if name not in st.session_state.zip_analysis_cache]
-                    if files_to_analyze:
-                        st.write("Performing analysis on new/unprocessed Java files in ZIP...")
-                        for member_name in files_to_analyze:
-                            try:
-                                file_bytes_zip = zip_ref.read(member_name)
-                                with st.spinner(f"Analyzing {member_name} from ZIP..."):
-                                    analysis_result = call_backend_api("analyze", member_name, file_bytes_zip, timeout=30)
-                                    if analysis_result["ok"]:
-                                        results_payload = analysis_result["data"].get("report", [])
-                                        temp_analysis_items = []
-                                        complete_sanitized_code_overall_zip = None
-                                        for item in results_payload:
-                                            if "complete_sanitized_code" in item:
-                                                complete_sanitized_code_overall_zip = item["complete_sanitized_code"]
-                                            else:
-                                                temp_analysis_items.append(item)
-                                        # If no vulnerabilities, create INFO message
-                                        analysis_items_to_cache = temp_analysis_items if temp_analysis_items else [{"issue": "No vulnerabilities found by analyzer.", "severity": "INFO"}]
-                                        
-                                        st.session_state.zip_analysis_cache[member_name] = {
-                                            "analysis_items": analysis_items_to_cache,
-                                            "complete_sanitized_code_overall": complete_sanitized_code_overall_zip
-                                        }
-                                    else:
-                                        st.session_state.zip_analysis_cache[member_name] = {
-                                            "analysis_items": [{"issue": f"Analysis Failed (ZIP): {analysis_result['error']}", "severity": "ERROR"}],
-                                            "complete_sanitized_code_overall": None
-                                        }
-                            except Exception as e:
-                                st.error(f"Error processing {member_name} from ZIP: {e}")
-                                st.session_state.zip_analysis_cache[member_name] = {
-                                    "analysis_items": [{"issue": f"Unexpected Error (ZIP): {e}", "severity": "ERROR"}],
-                                    "complete_sanitized_code_overall": None
-                                }
-                        st.success(f"Finished analyzing {len(files_to_analyze)} new Java file(s) from the ZIP archive.")
-                        # Rerun if new analysis results were added, to ensure display updates cleanly
-                        if files_to_analyze:
-                            st.rerun()
-
-                    # --- Display Loop for ZIP files ---
-                    # This loop always displays from the cache, preventing repeated API calls
-                    for member_name in java_files_in_zip:
+                    for member_name in sorted(java_files_in_zip): # Sort for consistent display order
                         st.markdown(f"---")
-                        st.markdown(f"#### File: `{member_name}`")
-                        
-                        cached_data = st.session_state.zip_analysis_cache.get(member_name)
-                        if cached_data:
-                            display_analysis_items(cached_data["analysis_items"], filename_for_key=f"zip_display_{member_name}")
-                            if cached_data["complete_sanitized_code_overall"]:
-                                st.subheader(f"✅ Complete Auto-Patched Version for {member_name} (from Analyzer)")
-                                st.code(cached_data["complete_sanitized_code_overall"].strip(), language="java")
+                        st.markdown(f"### File: `{member_name}`")
 
-                            # --- Auto-Patch Section for individual ZIP files ---
-                            can_attempt_patch_zip = any(item.get("severity") not in ["ERROR", "INFO"] for item in cached_data["analysis_items"])
-                            if can_attempt_patch_zip:
-                                st.markdown(f"###### ⚙️ Auto-Patch Code for: {member_name}")
-                                patch_button_key_zip = f"patch_button_zip_{member_name.replace('.', '_').replace('/', '_').replace(' ', '_')}"
-                                
-                                # Check if patching for this file was triggered or results are cached
-                                patched_result_cached = st.session_state.zip_patch_cache.get(member_name)
+                        # --- ZIP File Analysis ---
+                        # Only analyze if not already cached
+                        if member_name not in st.session_state.zip_analysis_cache:
+                            st.subheader("Scanning for Vulnerabilities...")
+                            with st.spinner(f"Analyzing `{member_name}`..."):
+                                member_content = zf.read(member_name)
+                                analysis_result = call_backend_api("analyze", member_name, member_content, timeout=30)
+                                if analysis_result["ok"]:
+                                    st.session_state.zip_analysis_cache[member_name] = {
+                                        "analysis_items": analysis_result["data"].get("report", []),
+                                        # "complete_sanitized_code": analysis_result["data"].get("complete_sanitized_code", "") # Analyzer doesn't send this
+                                    }
+                                else:
+                                    st.session_state.zip_analysis_cache[member_name] = {
+                                        "analysis_items": [{"issue": f"Analysis Failed: {analysis_result['error']}", "severity": "ERROR"}],
+                                    }
+                        
+                        # Display analysis results for the current ZIP member
+                        if member_name in st.session_state.zip_analysis_cache:
+                            display_analysis_items(st.session_state.zip_analysis_cache[member_name]["analysis_items"], member_name)
+
+                            # --- ZIP File Patching ---
+                            # Only show patch button if analysis found actual vulnerabilities for this file
+                            member_analysis_items = st.session_state.zip_analysis_cache[member_name]["analysis_items"]
+                            can_patch_zip_member = any(item.get("severity") not in ["ERROR", "INFO"] for item in member_analysis_items)
+
+                            if can_patch_zip_member:
+                                st.markdown(f"#### ⚙️ Auto-Patch Code for: `{member_name}`")
+                                patch_button_key_zip = f"patch_button_zip_{member_name.replace('.', '_').replace('/', '_')}"
                                 
                                 if st.button(f"Generate Patched Code for {member_name}", key=patch_button_key_zip):
                                     st.session_state.zip_patch_triggered_files.add(member_name)
-                                    st.rerun() # Rerun to trigger the patching logic below
-                                
-                                # Process patch if triggered and not yet cached
-                                if member_name in st.session_state.zip_patch_triggered_files and not patched_result_cached:
-                                    file_bytes_zip = zip_ref.read(member_name) # Re-read bytes for patch API call
-                                    with st.spinner(f"Auto-patching {member_name} from ZIP..."):
-                                        patch_result = call_backend_api("patch", member_name, file_bytes_zip, timeout=60)
-                                        if patch_result["ok"]:
-                                            patched_code_zip = patch_result["data"].get("patched_code", "")
-                                            patch_logs_zip = patch_result["data"].get("patch_logs", "")
-                                            st.session_state.zip_patch_cache[member_name] = {
-                                                "patched_code": patched_code_zip,
-                                                "patch_logs": patch_logs_zip
-                                            }
-                                        else:
-                                            st.session_state.zip_patch_cache[member_name] = {
-                                                "patched_code": "",
-                                                "patch_logs": f"Patching failed: {patch_result['error']}"
-                                            }
-                                    st.session_state.zip_patch_triggered_files.discard(member_name) # Remove from triggered set
-                                    st.rerun() # Rerun to display the newly patched code
-                                
-                                # Display patched results from cache
-                                if member_name in st.session_state.zip_patch_cache:
+                                    st.session_state.zip_patch_cache[member_name] = {"patched_code": None, "patch_logs": None} # Reset before patch
+                                    st.rerun() # Trigger rerun for patching
+
+                                # Execute patching logic if triggered for this file
+                                if member_name in st.session_state.zip_patch_triggered_files:
+                                    if st.session_state.zip_patch_cache[member_name].get("patched_code") is None: # Only run if not already patched/cached
+                                        with st.spinner(f"Attempting to auto-patch `{member_name}`..."):
+                                            member_content = zf.read(member_name) # Re-read content
+                                            patch_result = call_backend_api("patch", member_name, member_content, timeout=60)
+                                            if patch_result["ok"]:
+                                                patch_data = patch_result["data"]
+                                                st.session_state.zip_patch_cache[member_name]["patched_code"] = patch_data.get("patched_code", "")
+                                                st.session_state.zip_patch_cache[member_name]["patch_logs"] = patch_data.get("patch_logs", []) # Ensure it's a list
+                                                if not st.session_state.zip_patch_cache[member_name]["patched_code"] and not st.session_state.zip_patch_cache[member_name]["patch_logs"]:
+                                                     st.session_state.zip_patch_cache[member_name]["patch_logs"] = [{"message": "Patching service returned an empty response. No changes made or no applicable patches found.", "line": "N/A"}]
+                                            else:
+                                                st.session_state.zip_patch_cache[member_name]["patched_code"] = ""
+                                                st.session_state.zip_patch_cache[member_name]["patch_logs"] = [{"message": f"Patching failed: {patch_result['error']}", "line": "N/A"}]
+                                    
+                                    # Display patched code and logs for the current ZIP member
                                     patched_code_display = st.session_state.zip_patch_cache[member_name]["patched_code"]
                                     patch_logs_display = st.session_state.zip_patch_cache[member_name]["patch_logs"]
 
                                     if patched_code_display:
-                                        st.subheader(f"🧰 Patched Code for {member_name}")
+                                        st.subheader(f"🧰 Patched Code Output for {member_name}")
                                         st.code(patched_code_display.strip(), language="java")
+                                        st.success(f"Auto-patching completed for {member_name}! Review the patched code.")
+                                    else:
+                                        st.warning(f"No patched code was returned for {member_name}.")
+
+                                    # Display patch logs for ZIP file members
                                     if patch_logs_display:
-                                        st.text_area(f"Patch Log for {member_name}:", value=patch_logs_display.strip(), height=100, disabled=True, key=f"log_zip_display_{patch_button_key_zip}")
-                        else:
-                            st.warning(f"No analysis results available for {member_name}. An error might have occurred during processing.")
+                                        st.subheader(f"📝 Patch Logs for {member_name}")
+                                        if isinstance(patch_logs_display, list):
+                                            if patch_logs_display:
+                                                for log_entry in patch_logs_display:
+                                                    line = log_entry.get("line", "N/A")
+                                                    message = log_entry.get("message", "No message provided.")
+                                                    st.text_area(f"Line {line}", value=message, height=70, disabled=True, key=f"log_zip_display_{member_name}_{line}_{message[:20]}")
+                                            else:
+                                                st.info(f"No specific patch logs were generated for {member_name}.")
+                                        else: # Fallback for unexpected string format
+                                            st.text_area("Raw Patch Logs (Unexpected Format):", value=str(patch_logs_display), height=100, disabled=True)
+                            else:
+                                st.warning(f"No analysis results available for {member_name} to patch, or no vulnerabilities found.")
+
 
         except zipfile.BadZipFile:
             st.error("The uploaded file is not a valid ZIP archive or is corrupted.")
@@ -521,7 +443,3 @@ with tab3_obj:
             st.session_state.zip_patch_cache = {}
             st.session_state.zip_patch_triggered_files = set()
 
-
-# --- Footer ---
-st.markdown("---")
-#st.markdown("<sub>Powered by Gemini Code Assist. For educational and illustrative purposes.</sub>", unsafe_allow_html=True)

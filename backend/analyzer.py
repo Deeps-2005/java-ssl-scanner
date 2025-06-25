@@ -37,10 +37,16 @@ def analyze_java_code(code: str):
 
     java_file_path = None # Initialize to None for finally block cleanup
     try:
+        # Aggressive line ending normalization:
+        # 1. Replace all CRLF with LF.
+        # 2. Replace all standalone CR with LF.
+        # This ensures only LF characters are used for newlines.
+        normalized_code = code.replace('\r\n', '\n').replace('\r', '\n')
+
         # Create a temporary Java file to write the code for analysis.
         # delete=False is used for easier debugging to inspect the temp file.
         with tempfile.NamedTemporaryFile(delete=False, suffix=".java", mode="w", encoding="utf-8") as temp:
-            temp.write(code)
+            temp.write(normalized_code) # Write the normalized code
             java_file_path = os.path.abspath(temp.name)
 
         # Determine the base path of the Python script (e.g., 'my_project/backend')
@@ -129,7 +135,9 @@ HttpsURLConnection.setDefaultHostnameVerifier(new HostnameVerifier() {
 
             elif "Weak cipher suite keyword detected in array" in issue_text or \
                  "Insecure SSL/TLS protocol requested" in issue_text or \
-                 "Insecure SSL/TLS protocol enabled via setEnabledProtocols" in issue_text:
+                 "Insecure SSL/TLS protocol enabled via setEnabledProtocols" in issue_text or \
+                 "Weak cipher suite enabled via setEnabledCipherSuites" in issue_text or \
+                 "Weak cipher suite keyword detected in array" in issue_text:
                 suggestion = "Use only strong, modern TLS protocols (e.g., TLSv1.2 or TLSv1.3) and secure cipher suites. Disable known weak protocols (e.g., SSLv2, SSLv3, TLSv1.0, TLSv1.1) and cipher suites (e.g., those using RC4, DES, NULL ciphers, ANONYMOUS, EXPORT)."
                 sanitized_code = """
 // Example: Enable only TLSv1.3 and TLSv1.2 protocols
@@ -214,8 +222,45 @@ try {
 }
                 """
                 severity = "MEDIUM"
-            # Add more elif conditions for other specific issue texts if needed
 
+            elif "Weak hashing algorithm used:" in issue_text:
+                suggestion = "Replace weak hashing algorithms (like MD5 or SHA-1) with strong, modern cryptographic hash functions such as SHA-256 or SHA-512 for data integrity, digital signatures, and password storage. For password storage, consider using adaptive functions like Argon2, scrypt, or bcrypt via a secure library."
+                sanitized_code = 'MessageDigest secureHash = MessageDigest.getInstance("SHA-256"); // Use SHA-256 or SHA-512\nsecureHash.update(data.getBytes());'
+                severity = "HIGH"
+
+            elif "Potentially hardcoded cryptographic key/salt/IV" in issue_text:
+                suggestion = "Never hardcode cryptographic keys, salts, or Initialization Vectors (IVs) directly in the source code. Externalize these sensitive values to secure configuration management systems, environment variables (with proper access control), or Hardware Security Modules (HSMs) for robust protection."
+                sanitized_code = 'byte[] keyBytes = System.getenv("AES_KEY").getBytes(StandardCharsets.UTF_8); // Load key from secure environment variable\nSecretKeySpec secretKey = new SecretKeySpec(keyBytes, "AES");'
+                severity = "CRITICAL"
+
+            elif "Deserialization of untrusted data via ObjectInputStream" in issue_text:
+                suggestion = "Avoid deserializing untrusted data using `ObjectInputStream` as it is a frequent source of Remote Code Execution (RCE) vulnerabilities. If deserialization is unavoidable, implement robust serialization filters (available in Java 9+) or use alternative, safer data formats like JSON, XML (with XXE protection), or Protocol Buffers."
+                sanitized_code = """
+// WARNING: Avoid ObjectInputStream with untrusted data.
+// If deserialization is strictly necessary and from trusted source:
+// FileInputStream fis = new FileInputStream("trusted_data.ser");
+// ObjectInputStream ois = new ObjectInputStream(fis);
+// Consider: ois.setObjectInputFilter(YourCustomFilter.createDenyAllFilter()); // Java 9+ security
+"""
+                severity = "CRITICAL"
+
+            elif "XML parsing factory created without explicit XXE hardening" in issue_text:
+                suggestion = "Configure XML parsing factories (DocumentBuilderFactory, SAXParserFactory, XMLInputFactory) to explicitly disable DTD processing and external entity resolution. This prevents XML External Entity (XXE) attacks, which can lead to information disclosure, Server-Side Request Forgery (SSRF), or Denial-of-Service."
+                sanitized_code = """
+DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
+try {
+    factory.setFeature("http://apache.org/xml/features/disallow-doctype-decl", true);
+    factory.setFeature("http://xml.org/sax/features/external-general-entities", false);
+    factory.setFeature("http://xml.org/sax/features/external-parameter-entities", false);
+    factory.setFeature("http://apache.org/xml/features/nonvalidating/load-external-dtd", false);
+    factory.setXIncludeAware(false);
+    factory.setExpandEntityReferences(false);
+} catch (ParserConfigurationException e) {
+    // Handle configuration error
+}
+"""
+                severity = "CRITICAL"
+            
             report.append({
                 "line": line_num,
                 "issue": issue_text,
@@ -224,11 +269,9 @@ try {
                 "severity": severity
             })
 
-        # Changed to return an empty list if no vulnerabilities are found
-        return report # Removed the "No vulnerabilities found." dict here
+        return report
 
     except subprocess.CalledProcessError as e:
-        # This block catches errors where the Java Analyzer itself fails to run (e.g., compilation issues in the user's Java code)
         return [{
             "line": None,
             "issue": "Analyzer execution failed",
@@ -237,7 +280,6 @@ try {
             "severity": "ERROR"
         }]
     except FileNotFoundError:
-        # This block catches errors if Java executable or the analyzer JARs are not found
         return [{
             "line": None,
             "issue": "Java or Analyzer dependencies not found",
@@ -246,7 +288,6 @@ try {
             "severity": "ERROR"
         }]
     except Exception as e:
-        # Catch any other unexpected exceptions during the Python script execution
         return [{
             "line": None,
             "issue": "An unexpected error occurred in Python script",
@@ -255,6 +296,5 @@ try {
             "severity": "ERROR"
         }]
     finally:
-        # Ensure the temporary Java file is deleted after analysis
         if java_file_path and os.path.exists(java_file_path):
             os.remove(java_file_path)
