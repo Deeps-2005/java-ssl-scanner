@@ -27,6 +27,7 @@ public class Analyzer {
     // SSL/JSSE related constants
     private static final List<String> INSECURE_PROTOCOLS = Arrays.asList("sslv2", "sslv3", "tlsv1", "tlsv1.0", "tlsv1.1");
     private static final List<String> WEAK_CIPHER_KEYWORDS = Arrays.asList("null", "anon", "export", "rc4", "des", "md5");
+    private static final List<String> NON_PFS_CIPHERS = Arrays.asList("_RSA_","_STATIC_","_DH_","_ECDH_");
 
     // NEW: Cryptography related constants
     private static final List<String> WEAK_HASHING_ALGORITHMS = Arrays.asList("md5", "sha-1");
@@ -61,6 +62,86 @@ public class Analyzer {
                 super.visit(mce, arg); // Call super to ensure full traversal
 
                 int line = mce.getBegin().map(p -> p.line).orElse(-1);
+
+                // NEW: Certificate Pinning Check
+                if (mce.getNameAsString().equals("checkServerTrusted") && 
+                    mce.getScope().isPresent() &&
+                    (mce.getScope().get().toString().contains("X509TrustManager") ||
+                     mce.getScope().get().toString().contains("TrustManager"))) {
+                    
+                    boolean hasPinning = mce.getParentNode()
+                        .filter(parent -> parent instanceof MethodDeclaration)
+                        .map(parent -> ((MethodDeclaration) parent).getBody())
+                        .flatMap(body -> body.map(b -> b.toString().contains("PublicKey") && 
+                                            b.toString().contains("X509Certificate")))
+                        .orElse(false);
+                    
+                    if (!hasPinning) {
+                        System.out.println("[Line " + line + "] ISSUE: Missing certificate pinning implementation - Vulnerable to MITM attacks. Implement certificate public key pinning. Severity: CRITICAL");
+                    }
+                }
+
+                // NEW: Forward Secrecy Check
+                if (mce.getNameAsString().equals("setEnabledCipherSuites") &&
+                    mce.getScope().isPresent() &&
+                    (mce.getScope().get().toString().contains("SSLSocket") || 
+                     mce.getScope().get().toString().contains("SSLEngine"))) {
+                    
+                    mce.getArguments().forEach(argExpr -> {
+                        if (argExpr.isArrayInitializerExpr()) {
+                            argExpr.asArrayInitializerExpr().getValues().forEach(cipherExpr -> {
+                                if (cipherExpr.isStringLiteralExpr()) {
+                                    String cipher = cipherExpr.asStringLiteralExpr().getValue();
+                                    if (NON_PFS_CIPHERS.stream().anyMatch(cipher::contains)) {
+                                        System.out.println("[Line " + line + "] ISSUE: Non-PFS cipher suite enabled: " + cipher + " - Prefer ECDHE cipher suites for forward secrecy. Severity: HIGH");
+                                    }
+                                }
+                            });
+                        }
+                    });
+                }
+
+                // NEW: HSTS Header Check
+                if ((mce.getNameAsString().equals("setHeader") || 
+                     mce.getNameAsString().equals("addHeader")) &&
+                    mce.getArguments().size() >= 2 &&
+                    mce.getArgument(0).isStringLiteralExpr()) {
+                    
+                    String headerName = mce.getArgument(0).asStringLiteralExpr().getValue();
+                    if (headerName.equalsIgnoreCase("Strict-Transport-Security")) {
+                        if (mce.getArgument(1).isStringLiteralExpr()) {
+                            String headerValue = mce.getArgument(1).asStringLiteralExpr().getValue();
+                            if (!headerValue.toLowerCase().contains("max-age") ||
+                                headerValue.toLowerCase().contains("max-age=0")) {
+                                System.out.println("[Line " + line + "] ISSUE: Weak HSTS header configuration: " + headerValue + " - Should include 'max-age' with substantial duration. Severity: HIGH");
+                            }
+                        }
+                    }
+                }
+
+                // NEW: CRL/OCSP Validation Check
+                if (mce.getNameAsString().equals("setRevocationEnabled") &&
+                    mce.getScope().isPresent() &&
+                    mce.getScope().get().toString().contains("PKIXBuilderParameters")) {
+                    
+                    if (mce.getArguments().size() == 1 &&
+                        mce.getArgument(0).isBooleanLiteralExpr() &&
+                        !mce.getArgument(0).asBooleanLiteralExpr().getValue()) {
+                        System.out.println("[Line " + line + "] ISSUE: Certificate revocation checking explicitly disabled - Enables revoked certificate acceptance. Severity: CRITICAL");
+                    }
+                }
+
+                // NEW: Server Name Indication (SNI) Check
+                if (mce.getNameAsString().equals("setServerNames") &&
+                    mce.getScope().isPresent() &&
+                    mce.getScope().get().toString().contains("SSLParameters")) {
+                    
+                    if (mce.getArguments().size() == 1 &&
+                        mce.getArgument(0).isNullLiteralExpr()) {
+                        System.out.println("[Line " + line + "] ISSUE: SNI explicitly disabled - May cause TLS handshake failures. Severity: MEDIUM");
+                    }
+                }
+
 
                 // Check for System.setProperty calls (debug logging, renegotiation)
                 if (mce.getNameAsString().equals("setProperty") && mce.getArguments().size() == 2) {
@@ -217,6 +298,38 @@ public class Analyzer {
 
                 int line = oce.getBegin().map(p -> p.line).orElse(-1);
 
+                // NEW: FIPS Compliance Check
+                if (oce.getType().getNameAsString().equals("Security") &&
+                    oce.getParentNode().isPresent() &&
+                    oce.getParentNode().get() instanceof MethodCallExpr) {
+                    
+                    MethodCallExpr parentCall = (MethodCallExpr) oce.getParentNode().get();
+                    if (parentCall.getNameAsString().equals("addProvider") &&
+                        parentCall.getArguments().size() == 1 &&
+                        parentCall.getArgument(0).isObjectCreationExpr()) {
+                        
+                        ObjectCreationExpr provider = parentCall.getArgument(0).asObjectCreationExpr();
+                        if (!provider.getType().getNameAsString().toLowerCase().contains("fips")) {
+                            System.out.println("[Line " + line + "] WARNING: Non-FIPS compliant cryptographic provider - Consider using FIPS validated modules for compliance. Severity: MEDIUM");
+                        }
+                    }
+                }
+
+                // NEW: Certificate Transparency Check
+                if (oce.getType().getNameAsString().equals("CTVerifier")) {
+                    boolean hasValidation = oce.getParentNode()
+                        .filter(parent -> parent instanceof VariableDeclarator)
+                        .map(parent -> (VariableDeclarator) parent)
+                        .flatMap(varDecl -> varDecl.getParentNode()) // returns Optional<Node>
+                        .filter(grandparent -> grandparent instanceof FieldDeclaration)
+                        .map(grandparent -> (FieldDeclaration) grandparent)
+                        .isPresent();
+                    
+                    if (!hasValidation) {
+                        System.out.println("[Line " + line + "] ISSUE: Certificate Transparency verifier created but not used - Implement CT validation for issued certificates. Severity: HIGH");
+                    }
+                }
+
                 // Check for Anonymous X509TrustManager/TrustManager
                 if (oce.getAnonymousClassBody().isPresent() &&
                     (oce.getType().getNameAsString().equals("X509TrustManager") ||
@@ -337,6 +450,7 @@ public class Analyzer {
                 return oce;
             }
 
+
             @Override
             public WhileStmt visit(WhileStmt ws, Void arg) {
                 super.visit(ws, arg);
@@ -356,6 +470,26 @@ public class Analyzer {
                 super.visit(vd, arg);
 
                 int line = vd.getBegin().map(p -> p.line).orElse(-1);
+
+                // NEW: HTTP/2 Protocol Check
+                if (vd.getType().isArrayType() &&
+                    vd.getType().asArrayType().getComponentType().toString().equals("String") &&
+                    vd.getInitializer().isPresent() &&
+                    vd.getInitializer().get() instanceof ArrayInitializerExpr) {
+                    
+                    ArrayInitializerExpr init = (ArrayInitializerExpr) vd.getInitializer().get();
+                    boolean hasHttp2 = init.getValues().stream()
+                        .filter(Expression::isStringLiteralExpr)
+                        .map(expr -> expr.asStringLiteralExpr().getValue())
+                        .anyMatch(val -> val.equalsIgnoreCase("h2"));
+                    
+                    if (!hasHttp2 && init.getValues().stream()
+                        .filter(Expression::isStringLiteralExpr)
+                        .map(expr -> expr.asStringLiteralExpr().getValue())
+                        .anyMatch(val -> val.startsWith("http/1"))) {
+                        System.out.println("[Line " + line + "] WARNING: HTTP/1.x protocol enabled without HTTP/2 - Prefer HTTP/2 for better security and performance. Severity: MEDIUM");
+                    }
+                }
 
                 // Weak cipher suites in array declaration
                 if (vd.getType().isArrayType() &&

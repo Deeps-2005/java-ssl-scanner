@@ -1332,7 +1332,7 @@
             // Cache the entire ZIP's analysis results
             analysisCache.set(zipFileContentHash, { zip_file_results: zipAnalysisResults });
 
-            showPersistentMessage(analysisMessage, 'success', 'ZIP analysis complete. Review individual file results below.');
+            showPersistentMessage(analysisMessage, 'success', 'ZIP analysis complete. Review individual file results above.');
             toggleLoadingSpinner(loadingAnalysis, false);
             processZipButton.disabled = false;
         });
