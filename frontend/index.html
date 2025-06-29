@@ -571,7 +571,7 @@
 
         // --- Core API Call Function ---
         async function callBackendApi(endpoint, fileName, fileContent, timeout = 30000) {
-            const api_url = `http://127.0.0.1:8000/${endpoint}`;
+            const api_url = `/{endpoint}`;
             const formData = new FormData();
             // fileContent can be Blob (for File) or string (for pasted code)
             const blob = fileContent instanceof File ? fileContent : new Blob([fileContent], { type: 'text/plain' });
