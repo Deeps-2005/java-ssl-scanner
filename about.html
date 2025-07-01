@@ -1,349 +1,518 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="scroll-smooth">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Anatomy of Web Application Vulnerabilities</title>
+    <title>Interactive Guide: Java SSL/HTTPS Vulnerability Scanner</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&display=swap" rel="stylesheet">
-    <!--
-    Selected Color Palette: "Brilliant Blues"
-    #004AAD (Dark Blue - Titles)
-    #0073E6 (Primary Blue - Accents, Charts)
-    #66B2FF (Light Blue - Charts, Highlights)
-    #CCE5FF (Very Light Blue - Backgrounds)
-    #1F2937 (Gray - Body Text)
-
-    Infographic Narrative Plan:
-    1.  Introduction/Hook: A high-impact hero section establishing the importance of web security.
-    2.  The Core Threats: Introduce the five key vulnerabilities (SQLi, XSS, Broken Auth, Insecure Deserialization, SSRF) using a card-based layout.
-    3.  Vulnerability Impact Analysis: A bar chart to compare the typical impacts of these vulnerabilities (e.g., RCE, Data Theft). Goal: Compare. Justification: A bar chart is ideal for comparing distinct categories. Implemented with Chart.js.
-    4.  Anatomy of an Attack: A flowchart visualizing a Server-Side Request Forgery (SSRF) attack. Goal: Organize. Justification: A flowchart clearly shows a process flow. Implemented with structured HTML/CSS with Tailwind as required (NO SVG/Mermaid).
-    5.  The Shield - Mitigation Strategies: A donut chart showing the distribution of key mitigation principles. Goal: Inform (Composition). Justification: A donut chart effectively shows parts of a whole. Implemented with Chart.js.
-    6.  Automated Defense Workflow: A flowchart illustrating the analysis-to-patching pipeline described in the source code files. Goal: Organize. Justification: A flowchart is the best way to represent this workflow. Implemented with structured HTML/CSS with Tailwind (NO SVG/Mermaid).
-    7.  Conclusion: A final call to action emphasizing a proactive security culture.
-
-    Visualization Choices Justification:
-    -   Bar Chart (Vulnerability Impact): Chosen to clearly compare the severity and common outcomes across different vulnerabilities. Implemented with Chart.js (Canvas). NO SVG.
-    -   Donut Chart (Mitigation Principles): Chosen to show the composition and relative importance of different defensive strategies. Implemented with Chart.js (Canvas). NO SVG.
-    -   Flowcharts (SSRF Attack & Tool Workflow): Implemented using styled HTML divs and borders with Tailwind CSS to create arrows and nodes, strictly adhering to the NO SVG and NO MERMAID JS constraint.
-    -   Icons: Using standard Unicode characters (e.g., 🛡️, 💉) to add visual cues without using image files or SVG.
-
-    Confirmation: NEITHER Mermaid JS NOR SVG were used anywhere in this output. All charts are rendered on Canvas elements by Chart.js, and diagrams are built with HTML/CSS.
+    <!-- Chosen Palette: Warm Neutral Harmony -->
+    <!-- Application Structure Plan: The application is structured into five logical, navigable sections to guide the user from a high-level overview to specific details. The flow is: 1) Hero section for an immediate summary. 2) Interactive Architecture diagram to visualize the system's components and flow. 3) An interactive Vulnerability Explorer, the core of the app, which uses a chart to filter a detailed list of threats, allowing users to explore data based on severity. 4) A clear, step-by-step 'Getting Started' guide. 5) A tabbed 'Usage' section for different user interfaces. This structure was chosen over a linear document format to empower users to quickly access the information most relevant to them (e.g., a security analyst might jump straight to vulnerabilities, while a new user would start from the top), enhancing usability and comprehension. -->
+    <!-- Visualization & Content Choices: 
+        - Report Info: System architecture -> Goal: Organize/Inform -> Viz: HTML/CSS diagram -> Interaction: Hover to show details -> Justification: Provides a clear, interactive map of the system's components without using forbidden SVG/Mermaid. It's intuitive and requires no special libraries.
+        - Report Info: Vulnerabilities by Severity -> Goal: Compare/Inform -> Viz: Chart.js Doughnut Chart -> Interaction: Click a segment to filter the detailed list below -> Justification: Excellent for showing the proportion of different categories. The interaction directly connects a high-level summary to detailed data, which is a powerful way to explore.
+        - Report Info: List of 15 vulnerabilities -> Goal: Organize/Inform -> Viz: HTML/CSS accordion list -> Interaction: Click to expand/collapse details. List is filtered by chart clicks. -> Justification: Manages a large amount of detailed information effectively, preventing cognitive overload by showing only what the user has selected.
+        - Report Info: Workflow steps -> Goal: Change/Process -> Viz: Numbered HTML/CSS list -> Interaction: None needed, simplicity is key -> Justification: A simple, numbered list is the clearest way to present a sequential process.
     -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
     <style>
         body {
             font-family: 'Inter', sans-serif;
-            background-color: #f0f4f8;
+            background-color: #FDFBF8; /* Warm off-white */
+            color: #4A4A4A;
+        }
+        .nav-link {
+            transition: color 0.3s ease, border-bottom-color 0.3s ease;
+            border-bottom: 2px solid transparent;
+        }
+        .nav-link:hover, .nav-link.active {
+            color: #D97706; /* Amber-600 */
+            border-bottom-color: #D97706;
+        }
+        .card {
+            background-color: #FFFFFF;
+            border: 1px solid #F3F4F6; /* Gray-100 */
+            border-radius: 0.75rem;
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.05), 0 2px 4px -2px rgb(0 0 0 / 0.05);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        .card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.07), 0 4px 6px -2px rgb(0 0 0 / 0.07);
+        }
+        .accordion-header {
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+        .accordion-content {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.5s ease-in-out, padding 0.5s ease-in-out;
+        }
+        .accordion-item.active .accordion-content {
+            max-height: 500px; /* Adjust as needed */
         }
         .chart-container {
             position: relative;
             width: 100%;
-            max-width: 600px;
+            max-width: 400px;
             margin-left: auto;
             margin-right: auto;
-            height: 350px;
+            height: auto;
             max-height: 400px;
         }
-        @media (min-width: 768px) {
-            .chart-container {
-                height: 400px;
-            }
-        }
-        .flow-arrow {
+        .arch-component {
             position: relative;
-            width: 100%;
-            height: 2rem;
-            display: flex;
-            align-items: center;
-            justify-content: center;
+            transition: all 0.3s ease;
         }
-        .flow-arrow::after {
-            content: '▼';
-            font-size: 1.5rem;
-            color: #0073E6;
+        .arch-component .arch-tooltip {
+            visibility: hidden;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            position: absolute;
+            bottom: 105%;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 10;
         }
-        .flow-arrow-right {
-            position: relative;
-            width: 2rem;
-            height: 100%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
+        .arch-component:hover .arch-tooltip {
+            visibility: visible;
+            opacity: 1;
         }
-        .flow-arrow-right::after {
-            content: '►';
-            font-size: 1.5rem;
-            color: #0073E6;
+        .tab.active {
+            border-color: #D97706;
+            color: #D97706;
+            background-color: #FFFBEB; /* Amber-50 */
         }
+        .tab-content {
+            display: none;
+        }
+        .tab-content.active {
+            display: block;
+        }
+        @import url('https://rsms.me/inter/inter.css');
+        html { font-family: 'Inter', sans-serif; }
     </style>
 </head>
-<body class="text-gray-800">
+<body class="antialiased">
 
-    <div class="container mx-auto p-4 md:p-8 max-w-7xl">
+    <header class="bg-white/80 backdrop-blur-sm sticky top-0 z-40 shadow-sm">
+        <nav class="container mx-auto px-6 py-3">
+            <div class="flex justify-between items-center">
+                <div class="text-xl font-bold text-amber-700">🔐 JavaGuard</div>
+                <div class="hidden md:flex space-x-8">
+                    <a href="#overview" class="nav-link active">Overview</a>
+                    <a href="#architecture" class="nav-link">Architecture</a>
+                    <a href="#vulnerabilities" class="nav-link">Vulnerabilities</a>
+                    <a href="#setup" class="nav-link">Getting Started</a>
+                    <a href="#usage" class="nav-link">Usage</a>
+                </div>
+                <button id="mobile-menu-button" class="md:hidden text-gray-700 focus:outline-none">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7"></path></svg>
+                </button>
+            </div>
+            <div id="mobile-menu" class="hidden md:hidden mt-4 space-y-2">
+                <a href="#overview" class="block py-2 px-4 text-sm nav-link">Overview</a>
+                <a href="#architecture" class="block py-2 px-4 text-sm nav-link">Architecture</a>
+                <a href="#vulnerabilities" class="block py-2 px-4 text-sm nav-link">Vulnerabilities</a>
+                <a href="#setup" class="block py-2 px-4 text-sm nav-link">Getting Started</a>
+                <a href="#usage" class="block py-2 px-4 text-sm nav-link">Usage</a>
+            </div>
+        </nav>
+    </header>
 
-        <header class="text-center py-12">
-            <h1 class="text-4xl md:text-6xl font-black text-[#004AAD]">The Anatomy of Web Application Vulnerabilities</h1>
-            <p class="mt-4 text-lg md:text-xl text-gray-600 max-w-3xl mx-auto">A deep dive into the most critical security risks threatening modern applications and the strategies to defend against them.</p>
-        </header>
+    <main class="container mx-auto px-6 py-8 md:py-12">
+        
+        <section id="overview" class="scroll-mt-20 text-center">
+            <h1 class="text-4xl md:text-5xl font-extrabold text-gray-800 leading-tight">Java SSL/HTTPS Vulnerability Scanner & Auto-Patcher</h1>
+            <p class="mt-4 max-w-3xl mx-auto text-lg text-gray-600">
+                This application provides a comprehensive toolkit to identify and automatically patch common SSL/HTTPS vulnerabilities in your Java source code, enhancing your application security with ease.
+            </p>
+            <div class="mt-10 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 text-left">
+                <div class="card p-6">
+                    <h3 class="font-bold text-lg text-amber-700">Multi-Input Support</h3>
+                    <p class="mt-2 text-gray-600">Analyze code by uploading `.java` files, pasting raw code, or scanning entire `.zip` archives.</p>
+                </div>
+                <div class="card p-6">
+                    <h3 class="font-bold text-lg text-amber-700">Detailed Analysis</h3>
+                    <p class="mt-2 text-gray-600">Scans for a wide range of insecure practices and misconfigurations, categorized by severity.</p>
+                </div>
+                <div class="card p-6">
+                    <h3 class="font-bold text-lg text-amber-700">Automated Patching</h3>
+                    <p class="mt-2 text-gray-600">Attempts to automatically apply fixes for detected vulnerabilities, providing patched code and change logs.</p>
+                </div>
+            </div>
+        </section>
 
-        <main>
-            <section id="core-threats" class="mb-20">
-                <h2 class="text-3xl font-bold text-center text-[#004AAD] mb-12">The Core Threats: A Landscape of Risk</h2>
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-8">
+        <section id="architecture" class="scroll-mt-20 mt-20 md:mt-24">
+            <h2 class="text-3xl font-bold text-center text-gray-800">System Architecture & Workflow</h2>
+            <p class="mt-4 max-w-2xl mx-auto text-center text-gray-600">
+                This tool uses a client-server model to provide a seamless analysis experience. You interact with a web-based frontend, which communicates with a powerful backend to orchestrate the Java analysis and patching engines. Hover over components to learn more.
+            </p>
+            <div class="mt-12 card p-8">
+                <div class="flex flex-col md:flex-row justify-between items-center md:items-stretch gap-8 text-center">
                     
-                    <div class="bg-white p-6 rounded-xl shadow-lg hover:shadow-2xl transition-shadow duration-300 transform hover:-translate-y-1 border-t-4 border-[#0073E6]">
-                        <div class="text-4xl mb-4">💉</div>
-                        <h3 class="text-xl font-bold text-[#004AAD] mb-2">SQL Injection (SQLi)</h3>
-                        <p class="text-gray-600">Attackers inject malicious SQL code into application inputs, tricking the database into executing unintended commands, leading to data theft or destruction.</p>
+                    <div class="arch-component w-full md:w-1/3 p-4 border-2 border-dashed border-sky-300 rounded-lg bg-sky-50">
+                        <h4 class="font-bold text-sky-800">1. Frontend</h4>
+                        <p class="text-sm text-sky-700 mt-2">The user interface you interact with.</p>
+                        <div class="mt-4 p-2 bg-white rounded-md border border-sky-200">Streamlit or HTML/JS App</div>
+                        <div class="arch-tooltip w-48 p-2 text-xs bg-gray-800 text-white rounded-md">Handles file uploads, code pasting, and displays results from the backend.</div>
                     </div>
 
-                    <div class="bg-white p-6 rounded-xl shadow-lg hover:shadow-2xl transition-shadow duration-300 transform hover:-translate-y-1 border-t-4 border-[#0073E6]">
-                        <div class="text-4xl mb-4">🎭</div>
-                        <h3 class="text-xl font-bold text-[#004AAD] mb-2">Cross-Site Scripting (XSS)</h3>
-                        <p class="text-gray-600">Malicious scripts are injected into trusted websites, executing in victims' browsers to hijack sessions, steal data, or deface sites.</p>
-                    </div>
-
-                    <div class="bg-white p-6 rounded-xl shadow-lg hover:shadow-2xl transition-shadow duration-300 transform hover:-translate-y-1 border-t-4 border-[#0073E6]">
-                        <div class="text-4xl mb-4">🔑</div>
-                        <h3 class="text-xl font-bold text-[#004AAD] mb-2">Broken Authentication</h3>
-                        <p class="text-gray-600">Flaws in session management or credential handling allow attackers to impersonate users through credential stuffing or session hijacking.</p>
-                    </div>
-
-                    <div class="bg-white p-6 rounded-xl shadow-lg hover:shadow-2xl transition-shadow duration-300 transform hover:-translate-y-1 border-t-4 border-[#0073E6]">
-                        <div class="text-4xl mb-4">📦</div>
-                        <h3 class="text-xl font-bold text-[#004AAD] mb-2">Insecure Deserialization</h3>
-                        <p class="text-gray-600">Untrusted serialized data is exploited during deserialization, leading to severe outcomes like Remote Code Execution (RCE) or denial of service.</p>
-                    </div>
-
-                    <div class="bg-white p-6 rounded-xl shadow-lg hover:shadow-2xl transition-shadow duration-300 transform hover:-translate-y-1 border-t-4 border-[#0073E6]">
-                        <div class="text-4xl mb-4">🔗</div>
-                        <h3 class="text-xl font-bold text-[#004AAD] mb-2">Server-Side Request Forgery</h3>
-                        <p class="text-gray-600">Attackers force the server to make requests to unintended locations, enabling access to internal systems, port scanning, or data exfiltration.</p>
-                    </div>
-                </div>
-            </section>
-
-            <section id="impact-analysis" class="mb-20 bg-[#CCE5FF] p-8 rounded-xl">
-                <h2 class="text-3xl font-bold text-center text-[#004AAD] mb-2">Vulnerability Impact Analysis</h2>
-                <p class="text-center text-gray-700 mb-8 max-w-2xl mx-auto">While all vulnerabilities are serious, their primary impacts differ. Remote Code Execution (RCE) is often the most critical, granting attackers near-total control. Here’s a comparative look at the most common outcomes.</p>
-                <div class="bg-white p-6 rounded-xl shadow-lg">
-                    <div class="chart-container">
-                        <canvas id="impactChart"></canvas>
-                    </div>
-                </div>
-            </section>
-            
-            <section id="attack-flow" class="mb-20">
-                <h2 class="text-3xl font-bold text-center text-[#004AAD] mb-2">Anatomy of an Attack: SSRF</h2>
-                <p class="text-center text-gray-600 mb-12 max-w-2xl mx-auto">Server-Side Request Forgery (SSRF) leverages the server's trust to attack internal resources. This flowchart illustrates how an attacker can exploit a seemingly harmless feature to access a sensitive internal API.</p>
-                <div class="flex flex-col items-center">
-                    <div class="bg-white p-6 rounded-xl shadow-md w-full max-w-md text-center">
-                        <div class="text-2xl font-bold text-[#004AAD]">1. Attacker</div>
-                        <p class="mt-2 text-gray-600">Finds an application feature that fetches data from a URL, like an image proxy.</p>
-                    </div>
-                    <div class="flow-arrow"></div>
-                    <div class="bg-white p-6 rounded-xl shadow-md w-full max-w-md text-center">
-                        <div class="text-2xl font-bold text-[#004AAD]">2. Crafted Request</div>
-                        <p class="mt-2 text-gray-600">Submits a malicious URL targeting an internal resource, e.g., <code class="bg-gray-200 p-1 rounded">http://127.0.0.1/admin-api</code>.</p>
-                    </div>
-                    <div class="flow-arrow"></div>
-                    <div class="bg-[#CCE5FF] p-6 rounded-xl shadow-inner w-full max-w-2xl text-center border-2 border-dashed border-[#0073E6]">
-                         <div class="text-2xl font-bold text-[#004AAD]">3. Vulnerable Server</div>
-                         <p class="mt-2 text-gray-700">The server, lacking proper validation, trusts the input and makes a request to the internal <code class="bg-white p-1 rounded">admin-api</code> on the attacker's behalf.</p>
-                    </div>
-                    <div class="flow-arrow"></div>
-                    <div class="bg-red-100 p-6 rounded-xl shadow-md w-full max-w-md text-center border-l-4 border-red-500">
-                        <div class="text-2xl font-bold text-red-700">4. Internal System Compromise</div>
-                        <p class="mt-2 text-red-600">The internal API, assuming the request is from a trusted source, returns sensitive data which the server then forwards to the attacker.</p>
-                    </div>
-                </div>
-            </section>
-            
-            <section id="mitigation" class="mb-20 bg-white p-8 rounded-xl shadow-lg">
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
                     <div>
-                        <h2 class="text-3xl font-bold text-[#004AAD] mb-4">The Shield: Core Mitigation Principles</h2>
-                        <p class="text-gray-600 mb-6">Effective defense is not about a single tool but a layered strategy built on core principles. Preventing attacks requires validating inputs, sanitizing outputs, enforcing strict access, and securely configuring every part of the application stack.</p>
-                        <ul class="space-y-3">
-                            <li class="flex items-start"><span class="text-[#0073E6] font-bold mr-2">🛡️ Input Validation:</span> Treat all user input as untrusted. Use strict allowlists.</li>
-                            <li class="flex items-start"><span class="text-[#0073E6] font-bold mr-2">🛡️ Output Encoding:</span> Encode data before rendering to prevent it from being executed by a browser.</li>
-                            <li class="flex items-start"><span class="text-[#0073E6] font-bold mr-2">🛡️ Access Control:</span> Enforce the Principle of Least Privilege and mandate Multi-Factor Authentication (MFA).</li>
-                            <li class="flex items-start"><span class="text-[#0073E6] font-bold mr-2">🛡️ Secure Configuration:</span> Harden every layer, from the webserver to the database, and avoid default settings.</li>
-                        </ul>
+                        <div class="w-8 h-8 md:w-auto md:h-full flex items-center justify-center text-gray-400 font-mono text-2xl">&rarr;   &larr;</div>
                     </div>
-                    <div class="chart-container h-80 md:h-96">
-                        <canvas id="mitigationChart"></canvas>
-                    </div>
-                </div>
-            </section>
 
-            <section id="auto-defense" class="mb-20">
-                <h2 class="text-3xl font-bold text-center text-[#004AAD] mb-2">Automated Defense: The Analysis-to-Patch Pipeline</h2>
-                <p class="text-center text-gray-600 mb-12 max-w-3xl mx-auto">Modern development integrates security directly into the workflow. The provided source files describe a tool that automates vulnerability detection and patching, demonstrating a proactive defense-in-depth approach.</p>
-                <div class="bg-white p-8 rounded-xl shadow-lg">
-                    <div class="grid grid-cols-1 md:grid-cols-5 items-center gap-4 text-center">
-                        <div class="bg-[#CCE5FF] p-4 rounded-lg">
-                            <h4 class="font-bold text-[#004AAD]">1. Upload Code</h4>
-                            <p class="text-sm text-gray-700">Developer uploads a `.java` file via the frontend.</p>
-                        </div>
-                        <div class="flow-arrow-right hidden md:flex"></div>
-                        <div class="flow-arrow md:hidden"></div>
-                        <div class="bg-[#CCE5FF] p-4 rounded-lg">
-                            <h4 class="font-bold text-[#004AAD]">2. Analyze</h4>
-                            <p class="text-sm text-gray-700">A Python backend invokes a Java static analyzer (SAST) to find known vulnerability patterns.</p>
-                        </div>
-                        <div class="flow-arrow-right hidden md:flex"></div>
-                        <div class="flow-arrow md:hidden"></div>
-                        <div class="bg-[#CCE5FF] p-4 rounded-lg">
-                            <h4 class="font-bold text-[#004AAD]">3. Report</h4>
-                            <p class="text-sm text-gray-700">Results are sent to the frontend, highlighting vulnerable lines of code.</p>
-                        </div>
-                         <div class="flow-arrow-right hidden md:flex"></div>
-                         <div class="flow-arrow md:hidden"></div>
-                        <div class="bg-[#CCE5FF] p-4 rounded-lg">
-                            <h4 class="font-bold text-[#004AAD]">4. Patch</h4>
-                            <p class="text-sm text-gray-700">Upon request, the backend applies automated patches to the code.</p>
-                        </div>
-                         <div class="flow-arrow-right hidden md:flex"></div>
-                         <div class="flow-arrow md:hidden"></div>
-                        <div class="bg-green-100 p-4 rounded-lg border-l-4 border-green-500">
-                            <h4 class="font-bold text-green-800">5. Secure Code</h4>
-                            <p class="text-sm text-green-700">The fixed, secure code is returned to the developer for review and deployment.</p>
-                        </div>
+
+                    <div class="arch-component w-full md:w-1/3 p-4 border-2 border-dashed border-indigo-300 rounded-lg bg-indigo-50">
+                        <h4 class="font-bold text-indigo-800">2. Backend API</h4>
+                        <p class="text-sm text-indigo-700 mt-2">The central processing hub.</p>
+                        <div class="mt-4 p-2 bg-white rounded-md border border-indigo-200">Python FastAPI Server</div>
+                        <div class="arch-tooltip w-48 p-2 text-xs bg-gray-800 text-white rounded-md">Receives code, manages temporary files, and invokes the Java tools.</div>
+                    </div>
+
+                    <div>
+                        <div class="w-8 h-8 md:w-auto md:h-full flex items-center justify-center text-gray-400 font-mono text-2xl">&rarr;   &larr;</div>
+                    </div>
+
+
+                    <div class="arch-component w-full md:w-1/3 p-4 border-2 border-dashed border-amber-300 rounded-lg bg-amber-50">
+                        <h4 class="font-bold text-amber-800">3. Java Tools</h4>
+                        <p class="text-sm text-amber-700 mt-2">The analysis and patching engine.</p>
+                        <div class="mt-4 p-2 bg-white rounded-md border border-amber-200">Analyzer & AutoPatcher</div>
+                        <div class="arch-tooltip w-48 p-2 text-xs bg-gray-800 text-white rounded-md">Java applications using JavaParser to perform static analysis and apply fixes to the code's AST.</div>
                     </div>
                 </div>
-            </section>
+            </div>
+        </section>
 
-        </main>
+        <section id="vulnerabilities" class="scroll-mt-20 mt-20 md:mt-24">
+            <h2 class="text-3xl font-bold text-center text-gray-800">Vulnerability Explorer</h2>
+            <p class="mt-4 max-w-2xl mx-auto text-center text-gray-600">
+                The scanner detects a wide range of security issues. The chart below shows the distribution of detectable vulnerability types by severity. Click a segment on the chart or a button below to filter the list and explore specific threats.
+            </p>
+            <div class="mt-12 flex flex-col lg:flex-row gap-8 lg:gap-12 items-center">
+                <div class="w-full lg:w-1/3 flex flex-col items-center">
+                    <div class="chart-container">
+                        <canvas id="vulnerabilityChart"></canvas>
+                    </div>
+                    <div id="filter-buttons" class="mt-6 flex flex-wrap justify-center gap-2"></div>
+                </div>
+                <div class="w-full lg:w-2/3">
+                    <div id="vulnerability-list" class="space-y-3">
+                        <p class="text-center text-gray-500">Select a category to see vulnerabilities.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
 
-        <footer class="text-center py-8 border-t border-gray-300 mt-12">
-            <p class="text-gray-500">Security is not a feature, it's a foundation. Build securely.</p>
-        </footer>
+        <section id="setup" class="scroll-mt-20 mt-20 md:mt-24">
+            <h2 class="text-3xl font-bold text-center text-gray-800">Getting Started</h2>
+             <p class="mt-4 max-w-2xl mx-auto text-center text-gray-600">
+                Follow these steps to set up the project on your local machine. You'll need Java (JDK 8+) and Python (3.8+) installed and accessible from your system's PATH.
+            </p>
+            <div class="mt-12 max-w-3xl mx-auto">
+                <div class="relative pl-8 space-y-8 border-l-2 border-gray-200">
+                    <div class="flex items-start">
+                        <div class="absolute -left-4 w-8 h-8 bg-amber-500 text-white rounded-full flex items-center justify-center font-bold">1</div>
+                        <div class="ml-4">
+                            <h4 class="font-bold text-lg">Project Structure & JAR</h4>
+                            <p class="text-gray-600">Ensure your project has the required directory structure and place the `javaparser-core-3.26.4.jar` file inside the `java_analyzer/` directory.</p>
+                        </div>
+                    </div>
+                     <div class="flex items-start">
+                        <div class="absolute -left-4 w-8 h-8 bg-amber-500 text-white rounded-full flex items-center justify-center font-bold">2</div>
+                        <div class="ml-4">
+                            <h4 class="font-bold text-lg">Install Python Dependencies</h4>
+                            <p class="text-gray-600">Install the required Python packages for the backend server and optional Streamlit frontend using pip.</p>
+                            <code class="mt-2 block text-sm bg-gray-100 text-gray-800 p-3 rounded-md">pip install fastapi uvicorn requests python-multipart streamlit</code>
+                        </div>
+                    </div>
+                     <div class="flex items-start">
+                        <div class="absolute -left-4 w-8 h-8 bg-amber-500 text-white rounded-full flex items-center justify-center font-bold">3</div>
+                        <div class="ml-4">
+                            <h4 class="font-bold text-lg">Compile Java Code</h4>
+                            <p class="text-gray-600">Navigate to the `java_analyzer/` directory and compile the Java source files using the Java compiler.</p>
+                            <code class="mt-2 block text-sm bg-gray-100 text-gray-800 p-3 rounded-md">cd java_analyzer/
+javac -cp javaparser-core-3.26.4.jar *.java</code>
+                        </div>
+                    </div>
+                    <div class="flex items-start">
+                        <div class="absolute -left-4 w-8 h-8 bg-amber-500 text-white rounded-full flex items-center justify-center font-bold">4</div>
+                        <div class="ml-4">
+                            <h4 class="font-bold text-lg">Run the Backend Server</h4>
+                            <p class="text-gray-600">In a new terminal, start the FastAPI backend server. It will typically be available at `http://127.0.0.1:8000`.</p>
+                            <code class="mt-2 block text-sm bg-gray-100 text-gray-800 p-3 rounded-md">cd backend/
+uvicorn main:app --reload</code>
+                        </div>
+                    </div>
+                     <div class="flex items-start">
+                        <div class="absolute -left-4 w-8 h-8 bg-amber-500 text-white rounded-full flex items-center justify-center font-bold">5</div>
+                        <div class="ml-4">
+                            <h4 class="font-bold text-lg">Run the Frontend</h4>
+                            <p class="text-gray-600">Open another terminal to run your chosen frontend. For Streamlit, use `streamlit run app.py`. For the HTML version, simply open `index.html` in a browser.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+        
+        <section id="usage" class="scroll-mt-20 mt-20 md:mt-24">
+            <h2 class="text-3xl font-bold text-center text-gray-800">How to Use the Scanner</h2>
+            <p class="mt-4 max-w-2xl mx-auto text-center text-gray-600">The tool offers multiple ways to input your Java code for analysis. Both the Streamlit and HTML frontends provide a similar set of intuitive controls.</p>
+            <div class="mt-12 max-w-4xl mx-auto">
+                <div class="border-b border-gray-200">
+                    <nav id="usage-tabs" class="-mb-px flex space-x-6" aria-label="Tabs">
+                        <button class="tab whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm active" data-tab="streamlit">Streamlit App</button>
+                        <button class="tab whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm" data-tab="html">HTML/JS App</button>
+                    </nav>
+                </div>
+                <div class="mt-8">
+                    <div id="tab-content-streamlit" class="tab-content active">
+                        <ol class="list-decimal list-inside space-y-4 text-gray-600">
+                            <li><span class="font-semibold text-gray-700">Select Input Method:</span> Choose from the "Upload .java File", "Paste Java Code", or "Upload ZIP File" options in the sidebar.</li>
+                            <li><span class="font-semibold text-gray-700">Provide Code:</span> Use the file browser or text area to input your code.</li>
+                            <li><span class="font-semibold text-gray-700">Scan for Vulnerabilities:</span> Click the main "Scan" button to start the analysis.</li>
+                            <li><span class="font-semibold text-gray-700">Review & Patch:</span> Examine the results table. If vulnerabilities are found, a "Generate Patched Code" button will appear, allowing you to view the automated fixes and logs.</li>
+                        </ol>
+                    </div>
+                    <div id="tab-content-html" class="tab-content">
+                         <ol class="list-decimal list-inside space-y-4 text-gray-600">
+                            <li><span class="font-semibold text-gray-700">Select Input Method:</span> Click on the "Upload .java File", "Paste Java Code", or "Upload ZIP Archive" tabs.</li>
+                            <li><span class="font-semibold text-gray-700">Provide Code:</span> Drag and drop a file or paste your code into the text area.</li>
+                            <li><span class="font-semibold text-gray-700">Scan for Vulnerabilities:</span> Click the "Scan" button associated with your chosen input method.</li>
+                            <li><span class="font-semibold text-gray-700">Review & Patch:</span> The analysis table will populate with findings. A "Generate Patched Code" button will appear below the results if fixes are available.</li>
+                        </ol>
+                    </div>
+                </div>
+            </div>
+        </section>
 
-    </div>
+    </main>
+
+    <footer class="bg-gray-100 mt-20">
+        <div class="container mx-auto px-6 py-8 text-center text-gray-600">
+            <p>Interactive guide created from project documentation.</p>
+            <p class="text-sm mt-2">This is a conceptual representation and not the actual scanner application.</p>
+        </div>
+    </footer>
 
     <script>
-        function wrapLabel(str, maxWidth) {
-            if (str.length <= maxWidth) {
-                return str;
-            }
-            const words = str.split(' ');
-            const lines = [];
-            let currentLine = '';
-            words.forEach(word => {
-                if ((currentLine + word).length > maxWidth) {
-                    lines.push(currentLine.trim());
-                    currentLine = '';
-                }
-                currentLine += word + ' ';
-            });
-            lines.push(currentLine.trim());
-            return lines;
-        }
+        document.addEventListener('DOMContentLoaded', function () {
+            
+            const vulnerabilityData = [
+                { name: 'Deserialization of Untrusted Data', severity: 'Critical', description: 'Usage of ObjectInputStream can lead to Remote Code Execution (RCE) if deserializing untrusted data streams.', suggestion: 'Avoid deserialization of untrusted data. If necessary, use a safe, look-ahead deserialization library or implement strict type checking.' },
+                { name: 'XML External Entity (XXE)', severity: 'Critical', description: 'XML parsers are configured without disabling external entities, making them vulnerable to XXE attacks.', suggestion: 'Explicitly disable DTDs and external entities in all XML factory instances (DocumentBuilderFactory, SAXParserFactory, etc.).' },
+                { name: 'Insecure TrustManager', severity: 'Critical', description: 'Custom TrustManager implementations that do not properly validate certificate chains, effectively disabling SSL/TLS security.', suggestion: 'Remove custom TrustManagers that accept all certificates. Use the default TrustManager or implement one that properly validates the certificate chain against a trusted KeyStore.' },
+                { name: 'Insecure HostnameVerifier', severity: 'Critical', description: 'Custom HostnameVerifier that accepts any hostname, making the application vulnerable to Man-in-the-Middle (MITM) attacks.', suggestion: 'Remove custom HostnameVerifiers that return true for all hostnames. Rely on the default verification logic.' },
+                { name: 'Weak/Outdated SSL/TLS Protocols', severity: 'High', description: 'Use of deprecated and insecure protocols like SSLv3, TLSv1.0, and TLSv1.1.', suggestion: 'Configure SSLContext and SSLSocket to use only modern, secure protocols like TLSv1.2 and TLSv1.3.' },
+                { name: 'Weak Cipher Suites', severity: 'High', description: 'Enabling weak or obsolete cipher suites (e.g., containing NULL, ANON, EXPORT, RC4, DES).', suggestion: 'Explicitly enable a list of strong, recommended cipher suites and disable all others.' },
+                { name: 'Hardcoded Passwords', severity: 'High', description: 'Hardcoding passwords directly in the source code, for example in KeyStore.load().', suggestion: 'Externalize secrets and passwords. Load them from a secure configuration file, environment variables, or a secrets management service.' },
+                { name: 'Hardcoded Cryptographic Keys/Salts', severity: 'High', description: 'Embedding cryptographic keys, salts, or IVs as literals in the source code.', suggestion: 'Generate keys and salts securely and store them outside the source code, using a proper key management system.' },
+                { name: 'Insecure HTTP URL Usage', severity: 'Medium', description: 'Using "http://" to connect to remote services, which sends data in cleartext.', suggestion: 'Always use "https://" for all external communications to ensure data is encrypted in transit.' },
+                { name: 'Weak Hashing Algorithms', severity: 'Medium', description: 'Use of cryptographically broken hashing algorithms like MD5 or SHA-1.', suggestion: 'Migrate to strong, modern hashing algorithms like SHA-256, SHA-512, or bcrypt for password hashing.' },
+                { name: 'TLS Renegotiation Enabled', severity: 'Medium', description: 'Allowing client-initiated TLS renegotiation, which can be exploited for Denial-of-Service (DoS) attacks.', suggestion: 'Disable client-initiated renegotiation via system properties unless absolutely required for legacy compatibility.' },
+                { name: 'Unseeded SecureRandom', severity: 'Warning', description: 'Instantiating SecureRandom without an explicit seed may lead to predictable values on some platforms.', suggestion: 'While modern JVMs handle seeding well, it is best practice to avoid calling setSeed() unless you have a high-entropy seed source. The default constructor is generally safe.' },
+                { name: 'Overly Broad Exception Catches', severity: 'Warning', description: 'Catching generic Exception or Throwable can hide critical security failures like SSL/TLS handshake errors.', suggestion: 'Catch specific exceptions (e.g., SSLException, CertificateException) to handle security-related failures explicitly and correctly.' },
+                { name: 'Debug Logging Enabled', severity: 'Warning', description: 'Enabling `javax.net.debug` can leak sensitive information about the SSL/TLS handshake in logs.', suggestion: 'Ensure that verbose SSL debugging is disabled in production environments.' },
+                { name: 'Potential Infinite Loops', severity: 'Warning', description: 'A `while(true)` loop could lead to a Denial-of-Service if it consumes resources without proper exit conditions.', suggestion: 'Review all infinite loops to ensure they have safe exit conditions and cannot be exploited to exhaust system resources.' },
+            ];
 
-        const sharedTooltipCallback = {
-            plugins: {
-                tooltip: {
-                    callbacks: {
-                        title: function(tooltipItems) {
-                            const item = tooltipItems[0];
-                            let label = item.chart.data.labels[item.dataIndex];
-                            if (Array.isArray(label)) {
-                                return label.join(' ');
-                            }
-                            return label;
-                        }
-                    }
-                }
-            }
-        };
+            const severityColors = {
+                'Critical': 'rgba(220, 38, 38, 0.7)',  // Red-600
+                'High': 'rgba(249, 115, 22, 0.7)',   // Orange-500
+                'Medium': 'rgba(234, 179, 8, 0.7)',    // Yellow-500
+                'Warning': 'rgba(59, 130, 246, 0.7)', // Blue-500
+            };
+            const severityBorderColors = {
+                'Critical': 'rgb(220, 38, 38)',
+                'High': 'rgb(249, 115, 22)',
+                'Medium': 'rgb(234, 179, 8)',
+                'Warning': 'rgb(59, 130, 246)',
+            };
+            const severityTextColors = {
+                'Critical': 'text-red-600',
+                'High': 'text-orange-500',
+                'Medium': 'text-yellow-500',
+                'Warning': 'text-blue-500',
+            };
+            const severityBgColors = {
+                'Critical': 'bg-red-100',
+                'High': 'bg-orange-100',
+                'Medium': 'bg-yellow-100',
+                'Warning': 'bg-blue-100',
+            };
+             const severityBorder = {
+                'Critical': 'border-red-500',
+                'High': 'border-orange-500',
+                'Medium': 'border-yellow-500',
+                'Warning': 'border-blue-500',
+            };
 
-        const impactChartCtx = document.getElementById('impactChart').getContext('2d');
-        const impactLabels = ['SQL Injection', 'Cross-Site Scripting', 'Broken Authentication', 'Insecure Deserialization', 'Server-Side Request Forgery'];
-        new Chart(impactChartCtx, {
-            type: 'bar',
-            data: {
-                labels: impactLabels.map(label => wrapLabel(label, 16)),
-                datasets: [{
-                    label: 'Data Theft / Leakage',
-                    data: [95, 85, 90, 70, 80],
-                    backgroundColor: '#0073E6',
-                }, {
-                    label: 'Account Takeover',
-                    data: [60, 90, 95, 40, 20],
-                    backgroundColor: '#66B2FF',
-                }, {
-                    label: 'Remote Code Execution (RCE)',
-                    data: [30, 0, 0, 98, 10],
-                     backgroundColor: '#004AAD',
-                }]
-            },
-            options: {
-                ...sharedTooltipCallback,
-                responsive: true,
-                maintainAspectRatio: false,
-                scales: {
-                    x: {
-                        stacked: true,
-                        grid: { display: false }
-                    },
-                    y: {
-                        stacked: true,
-                        beginAtZero: true,
-                        title: {
-                            display: true,
-                            text: 'Relative Impact Score'
-                        }
-                    }
+            const severities = ['Critical', 'High', 'Medium', 'Warning'];
+            const counts = severities.map(s => vulnerabilityData.filter(v => v.severity === s).length);
+
+            const ctx = document.getElementById('vulnerabilityChart').getContext('2d');
+            const vulnerabilityChart = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: severities,
+                    datasets: [{
+                        label: 'Vulnerabilities',
+                        data: counts,
+                        backgroundColor: severities.map(s => severityColors[s]),
+                        borderColor: severities.map(s => severityBorderColors[s]),
+                        borderWidth: 1
+                    }]
                 },
-                plugins: {
-                     ...sharedTooltipCallback.plugins,
-                    legend: {
-                        position: 'bottom',
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    let label = context.label || '';
+                                    if (label) {
+                                        label += ': ';
+                                    }
+                                    if (context.parsed !== null) {
+                                        label += context.parsed + ' types';
+                                    }
+                                    return label;
+                                }
+                            }
+                        }
                     },
-                }
-            }
-        });
-
-        const mitigationChartCtx = document.getElementById('mitigationChart').getContext('2d');
-        const mitigationLabels = [
-            'Input Validation & Sanitization (Allowlisting)', 
-            'Context-Aware Output Encoding', 
-            'Strong Authentication & Session Mgmt (MFA)', 
-            'Secure Configuration & Hardening'
-        ];
-        new Chart(mitigationChartCtx, {
-            type: 'doughnut',
-            data: {
-                labels: mitigationLabels.map(label => wrapLabel(label, 16)),
-                datasets: [{
-                    label: 'Importance',
-                    data: [35, 30, 25, 10],
-                    backgroundColor: ['#004AAD', '#0073E6', '#66B2FF', '#CCE5FF'],
-                    borderColor: '#fff',
-                    borderWidth: 3
-                }]
-            },
-            options: {
-                 ...sharedTooltipCallback,
-                 responsive: true,
-                 maintainAspectRatio: false,
-                 plugins: {
-                    ...sharedTooltipCallback.plugins,
-                    legend: {
-                        position: 'bottom',
-                         labels: {
-                            padding: 20
+                    onClick: (event, elements) => {
+                        if (elements.length > 0) {
+                            const chartElement = elements[0];
+                            const index = chartElement.index;
+                            const severity = vulnerabilityChart.data.labels[index];
+                            filterVulnerabilities(severity);
                         }
                     }
                 }
+            });
+
+            const filterButtonsContainer = document.getElementById('filter-buttons');
+            
+            const renderFilterButtons = (activeSeverity = 'All') => {
+                 filterButtonsContainer.innerHTML = '';
+                 ['All', ...severities].forEach(severity => {
+                    const count = severity === 'All' ? vulnerabilityData.length : vulnerabilityData.filter(v => v.severity === severity).length;
+                    const button = document.createElement('button');
+                    const isActive = severity === activeSeverity;
+                    button.textContent = `${severity} (${count})`;
+                    button.dataset.severity = severity;
+                    button.className = `filter-btn px-3 py-1 text-sm font-medium rounded-full border transition-all ${ isActive 
+                        ? `${severityBgColors[severity] || 'bg-gray-200'} ${severityBorder[severity] || 'border-gray-400'} ${severityTextColors[severity] || 'text-gray-800'}`
+                        : 'bg-white border-gray-300 text-gray-600 hover:bg-gray-50'
+                    }`;
+                     if (severity === 'All' && isActive) {
+                        button.className = 'filter-btn px-3 py-1 text-sm font-medium rounded-full border transition-all bg-amber-600 text-white border-amber-700';
+                     }
+                    button.onclick = () => filterVulnerabilities(severity);
+                    filterButtonsContainer.appendChild(button);
+                });
             }
+
+            const vulnerabilityList = document.getElementById('vulnerability-list');
+            const filterVulnerabilities = (severity) => {
+                const filteredData = severity === 'All'
+                    ? vulnerabilityData
+                    : vulnerabilityData.filter(v => v.severity === severity);
+                
+                vulnerabilityList.innerHTML = '';
+
+                if (filteredData.length === 0) {
+                    vulnerabilityList.innerHTML = '<p class="text-center text-gray-500">No vulnerabilities in this category.</p>';
+                    return;
+                }
+
+                filteredData.forEach(vuln => {
+                    const item = document.createElement('div');
+                    item.className = `accordion-item card overflow-hidden border-l-4 ${severityBorder[vuln.severity]}`;
+
+                    item.innerHTML = `
+                        <div class="accordion-header p-4 flex justify-between items-center">
+                            <h4 class="font-semibold text-gray-800">${vuln.name}</h4>
+                            <div class="flex items-center gap-4">
+                               <span class="px-2 py-0.5 text-xs font-semibold rounded-full ${severityBgColors[vuln.severity]} ${severityTextColors[vuln.severity]}">${vuln.severity}</span>
+                               <svg class="w-5 h-5 chevron transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                            </div>
+                        </div>
+                        <div class="accordion-content">
+                            <div class="px-4 pb-4 pt-2 border-t border-gray-100">
+                                <p class="text-gray-600">${vuln.description}</p>
+                                <h5 class="font-semibold mt-3 mb-1 text-gray-700">Suggestion:</h5>
+                                <p class="text-gray-600">${vuln.suggestion}</p>
+                            </div>
+                        </div>
+                    `;
+                    vulnerabilityList.appendChild(item);
+                });
+
+                renderFilterButtons(severity);
+
+                vulnerabilityList.querySelectorAll('.accordion-header').forEach(header => {
+                    header.addEventListener('click', () => {
+                        const item = header.parentElement;
+                        item.classList.toggle('active');
+                        const chevron = header.querySelector('.chevron');
+                        chevron.classList.toggle('rotate-180');
+                    });
+                });
+            };
+            
+            filterVulnerabilities('All');
+
+            const mobileMenuButton = document.getElementById('mobile-menu-button');
+            const mobileMenu = document.getElementById('mobile-menu');
+            mobileMenuButton.addEventListener('click', () => {
+                mobileMenu.classList.toggle('hidden');
+            });
+            
+            const navLinks = document.querySelectorAll('.nav-link');
+            const sections = document.querySelectorAll('section');
+            window.addEventListener('scroll', () => {
+                let current = '';
+                sections.forEach(section => {
+                    const sectionTop = section.offsetTop;
+                    if (pageYOffset >= sectionTop - 80) { // 80 is header height
+                        current = section.getAttribute('id');
+                    }
+                });
+
+                navLinks.forEach(link => {
+                    link.classList.remove('active');
+                    if (link.getAttribute('href').includes(current)) {
+                        link.classList.add('active');
+                    }
+                });
+            });
+
+            const usageTabs = document.getElementById('usage-tabs');
+            const tabContents = document.querySelectorAll('.tab-content');
+            usageTabs.addEventListener('click', (e) => {
+                if (e.target.classList.contains('tab')) {
+                    const tabId = e.target.dataset.tab;
+                    
+                    usageTabs.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
+                    e.target.classList.add('active');
+
+                    tabContents.forEach(content => {
+                        content.classList.remove('active');
+                        if(content.id === `tab-content-${tabId}`) {
+                            content.classList.add('active');
+                        }
+                    });
+                }
+            });
         });
     </script>
-
 </body>
 </html>
